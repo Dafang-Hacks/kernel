@@ -21,8 +21,98 @@ static u32 frac_to_value(u32 frac)
 	return v;
 }
 
-static int pll_set_rate(struct clk *clk,unsigned long rate) {
-	return -1;
+struct pll_rate_setting {
+	unsigned long rate;
+	int m,n,o2,o1;
+};
+
+struct pll_rate_setting* cal_pll_setting(unsigned long rate)
+{
+	struct pll_rate_setting *p;
+
+	if(rate >= 600000000 && rate <= 1200000000){ /*Now we just supoort 600M~1.2G*/
+		unsigned int ext_rate = get_clk_from_id(CLK_ID_EXT1)->rate,div_rate;
+		static struct pll_rate_setting tmp_rate;
+		int m = -1,n = 1;
+		p = &tmp_rate;
+
+		for(n = 1; n < 0x40; n++) {/*PLLN[5:0]*/
+			if (ext_rate % n !=0)
+				continue;
+
+			div_rate = ext_rate / n;
+			if ((rate % div_rate == 0) && (rate / div_rate < 0x1000)){/*PLLM[11:0]*/
+				m = rate / div_rate;
+				break;
+			} else {
+				continue;
+			}
+		}
+
+		if (n == 0x40 || m == -1)
+			return NULL;
+
+		printk("m=%d n=%d\n",m,n);
+		p->rate = m * (ext_rate / n / 1000 / 1000);
+		p->m = m;
+		p->n = n;
+		p->o2 = 1;
+		p->o1 = 1;
+	} else {
+		return NULL;
+	}
+
+	return p;
+}
+
+static int pll_set_rate(struct clk *clk,unsigned long rate)
+{
+	int ret = -1;
+	unsigned int cpxpcr;
+	struct pll_rate_setting *p=NULL;
+	unsigned long flags;
+	unsigned int timeout = 0x1ffff;
+	spin_lock_irqsave(&cpm_pll_lock,flags);
+
+	cpxpcr = cpm_inl(CLK_PLL_NO(clk->flags));
+	if(rate == 0) {
+		cpxpcr &= ~(1 << 0);
+		cpm_outl(cpxpcr,CLK_PLL_NO(clk->flags));
+		clk->rate = 0;
+		ret = 0;
+		goto PLL_SET_RATE_FINISH;
+	} else if(rate <= clk_get_rate(clk->parent)) {
+		ret = -1;
+	} else {
+		p = cal_pll_setting(rate);
+		if(p) {
+			cpxpcr &= ~1;
+			cpm_outl(cpxpcr,CLK_PLL_NO(clk->flags));
+
+			cpxpcr &= ~((0xfff << 20) | (0x3f << 14) | (0x7 << 11) | (0x7 << 8));
+			cpxpcr |= ((p->m) << 20) | ((p->n) << 14) |
+				((p->o2) << 11) | ((p->o1) << 8) ;
+			cpm_outl(cpxpcr,CLK_PLL_NO(clk->flags));
+
+			cpxpcr |= 1;
+			cpm_outl(cpxpcr,CLK_PLL_NO(clk->flags));
+
+			ret = 0;
+			clk->rate = p->rate * 1000 * 1000;
+
+			while(!(cpm_inl(CLK_PLL_NO(clk->flags)) & (1 << 3)) && timeout--);
+			if (timeout == 0) {
+				printk("wait pll stable timeout!");
+				ret = -1;
+			}
+		} else {
+			printk("no support this rate [%ld]\n",rate);
+		}
+	}
+
+PLL_SET_RATE_FINISH:
+	spin_unlock_irqrestore(&cpm_pll_lock,flags);
+	return ret;
 }
 
 static unsigned long pll_get_rate(struct clk *clk) {

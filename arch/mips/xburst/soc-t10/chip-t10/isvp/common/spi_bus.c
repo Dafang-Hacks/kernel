@@ -170,7 +170,6 @@ struct spi_nor_platform_data spi_nor_pdata[] = {
 		.quad_mode = &flash_quad_mode[0],
 #endif
 	},
-
 	{
 		.name           = "GD25Q64C",
 		.pagesize       = 256,
@@ -252,7 +251,7 @@ struct spi_nor_platform_data spi_nor_pdata[] = {
 
 		.st_regnum      = 3,
 #ifdef CONFIG_SPI_QUAD
-		.quad_mode = &flash_quad_mode[0],
+		.quad_mode = &flash_quad_mode[1],
 #endif
 	},
 	{
@@ -273,7 +272,7 @@ struct spi_nor_platform_data spi_nor_pdata[] = {
 
 		.st_regnum      = 3,
 #ifdef CONFIG_SPI_QUAD
-		.quad_mode = &flash_quad_mode[0],
+		.quad_mode = &flash_quad_mode[1],
 #endif
 	},
 	{
@@ -316,6 +315,27 @@ struct spi_nor_platform_data spi_nor_pdata[] = {
 		.st_regnum      = 3,
 #ifdef CONFIG_SPI_QUAD
 		.quad_mode = &flash_quad_mode[0],
+#endif
+	},
+	{
+		.name           = "XT25F128A",
+		.pagesize       = 256,
+		.sectorsize     = 4 * 1024,
+		.chipsize       = 16384 * 1024,
+		.erasesize      = 32 * 1024,
+		.id             = 0x207018,
+
+		.block_info     = flash_block_info,
+		.num_block_info = ARRAY_SIZE(flash_block_info),
+
+		.addrsize       = 3,
+		.pp_maxbusy     = 3,            /* 4ms */
+		.se_maxbusy     = 400,          /* 400ms */
+		.ce_maxbusy     = 8 * 10000,    /* 80s */
+
+		.st_regnum      = 3,
+#ifdef CONFIG_SPI_QUAD
+		.quad_mode = &flash_quad_mode[1],
 #endif
 	},
 	{

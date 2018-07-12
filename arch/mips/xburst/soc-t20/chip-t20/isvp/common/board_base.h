@@ -2,6 +2,7 @@
 #define __BOARD_BASE_H__
 #include <linux/i2c.h>
 #include <linux/pwm.h>
+#include <linux/spi/spi.h>
 
 #include <board.h>
 
@@ -33,6 +34,7 @@ extern struct snd_codec_data codec_data;
 #endif
 #ifdef CONFIG_BCM_PM_CORE
 extern struct platform_device bcm_power_platform_device;
+extern struct platform_device wlan_device;
 #endif
 #ifndef CONFIG_NAND
 #ifdef CONFIG_JZMMC_V12_MMC0
@@ -81,5 +83,13 @@ extern struct platform_device jz_pwm_sdk_device;
 #endif
 #ifdef CONFIG_MFD_JZ_TCU
 extern struct platform_device jz_tcu_device;
+#endif
+
+#ifdef CONFIG_JZ_SPI0
+extern struct jz_spi_info spi0_info_cfg;
+#endif
+
+#ifdef CONFIG_JZ_SPI1
+extern struct jz_spi_info spi1_info_cfg;
 #endif
 #endif	/* __BOARD_BASE_H__ */

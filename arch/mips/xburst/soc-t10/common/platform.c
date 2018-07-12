@@ -96,6 +96,10 @@ struct jz_gpio_func_def platform_devio_array[] = {
 #ifdef CONFIG_JZ_DMIC_V12
 	DMIC_PORTC,
 #endif
+
+#ifdef CONFIG_JZ_MAC
+	GMAC_PORTB,
+#endif
 };
 
 int platform_devio_array_size = ARRAY_SIZE(platform_devio_array);

@@ -4,7 +4,7 @@ choice
 	default BOARD_BULL
 
 config BOARD_BULL
-       bool "bull"
+       bool "Bull"
        depends on PLATFORM_T20_ISVP
 
 endchoice

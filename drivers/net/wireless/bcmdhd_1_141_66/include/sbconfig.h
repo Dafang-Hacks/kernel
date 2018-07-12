@@ -3,7 +3,7 @@
  *
  * $Copyright Open Broadcom Corporation$
  *
- * $Id: sbconfig.h 241182 2011-02-17 21:50:03Z $
+ * $Id: sbconfig.h 456346 2014-02-18 16:48:52Z $
  */
 
 #ifndef	_SBCONFIG_H
@@ -63,7 +63,7 @@
 #define SBTMPORTCONNID0		0xed8
 #define SBTMPORTLOCK0		0xef8
 
-#ifndef _LANGUAGE_ASSEMBLY
+#if !defined(_LANGUAGE_ASSEMBLY) && !defined(__ASSEMBLY__)
 
 typedef volatile struct _sbconfig {
 	uint32	PAD[2];
@@ -105,7 +105,7 @@ typedef volatile struct _sbconfig {
 	uint32	sbidhigh;		/* identification */
 } sbconfig_t;
 
-#endif /* _LANGUAGE_ASSEMBLY */
+#endif /* !_LANGUAGE_ASSEMBLY && !__ASSEMBLY__ */
 
 /* sbipsflag */
 #define	SBIPS_INT1_MASK		0x3f		/* which sbflags get routed to mips interrupt 1 */

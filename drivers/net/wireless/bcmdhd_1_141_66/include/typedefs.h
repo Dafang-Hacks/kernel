@@ -1,6 +1,6 @@
 /*
  * $Copyright Open Broadcom Corporation$
- * $Id: typedefs.h 453696 2014-02-06 01:10:20Z $
+ * $Id: typedefs.h 484281 2014-06-12 22:42:26Z $
  */
 
 #ifndef _TYPEDEFS_H_
@@ -68,7 +68,6 @@ typedef long unsigned int size_t;
 #define TYPEDEF_ULONG
 #endif
 
-
 /*
  * If this is either a Linux hybrid build or the per-port code of a hybrid build
  * then use the Linux header files to get some of the typedefs.  Otherwise, define
@@ -96,8 +95,6 @@ typedef long unsigned int size_t;
 #endif	/* == 2.6.18 */
 #endif	/* __KERNEL__ */
 #endif  /* !defined(LINUX_HYBRID) || defined(LINUX_PORT) */
-
-
 
 
 /* Do not support the (u)int64 types with strict ansi for GNU C */
@@ -131,13 +128,11 @@ typedef long unsigned int size_t;
 
 #else
 
-
 #include <sys/types.h>
 
 #endif /* linux && __KERNEL__ */
 
 #endif 
-
 
 
 /* use the default typedefs in the next section of this file */
@@ -155,7 +150,7 @@ typedef long unsigned int size_t;
 
 #ifndef TYPEDEF_BOOL
 typedef	/* @abstract@ */ unsigned char	bool;
-#endif
+#endif /* endif TYPEDEF_BOOL */
 
 /* define uchar, ushort, uint, ulong */
 

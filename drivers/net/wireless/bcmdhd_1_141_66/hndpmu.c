@@ -4,7 +4,7 @@
  *
  * $Copyright Open Broadcom Corporation$
  *
- * $Id: hndpmu.c 433378 2013-10-31 17:19:39Z $
+ * $Id: hndpmu.c 475037 2014-05-02 23:55:49Z $
  */
 
 
@@ -160,7 +160,7 @@ static const sdiod_drive_str_t sdiod_drive_strength_tab7_1v8[] = {
 void
 si_sdiod_drive_strength_init(si_t *sih, osl_t *osh, uint32 drivestrength)
 {
-	chipcregs_t *cc;
+	chipcregs_t *cc = NULL;
 	uint origidx, intr_val = 0;
 	sdiod_drive_str_t *str_tab = NULL;
 	uint32 str_mask = 0;	/* only alter desired bits in PMU chipcontrol 1 register */
@@ -173,7 +173,8 @@ si_sdiod_drive_strength_init(si_t *sih, osl_t *osh, uint32 drivestrength)
 	}
 
 	/* Remember original core before switch to chipc */
-	cc = (chipcregs_t *) si_switch_core(sih, CC_CORE_ID, &origidx, &intr_val);
+	if (CHIPID(sih->chip) == BCM43362_CHIP_ID)
+		cc = (chipcregs_t *) si_switch_core(sih, CC_CORE_ID, &origidx, &intr_val);
 
 	switch (SDIOD_DRVSTR_KEY(sih->chip, sih->pmurev)) {
 	case SDIOD_DRVSTR_KEY(BCM4325_CHIP_ID, 1):
@@ -233,7 +234,36 @@ si_sdiod_drive_strength_init(si_t *sih, osl_t *osh, uint32 drivestrength)
 		break;
 	}
 
-	if (str_tab != NULL && cc != NULL) {
+	if (CHIPID(sih->chip) == BCM43362_CHIP_ID) {
+		if (str_tab != NULL && cc != NULL) {
+			uint32 cc_data_temp;
+			int i;
+
+			/* Pick the lowest available drive strength equal or greater than the
+			 * requested strength.	Drive strength of 0 requests tri-state.
+			 */
+			for (i = 0; drivestrength < str_tab[i].strength; i++)
+				;
+
+			if (i > 0 && drivestrength > str_tab[i].strength)
+				i--;
+
+			W_REG(osh, &cc->chipcontrol_addr, PMU_CHIPCTL1);
+			cc_data_temp = R_REG(osh, &cc->chipcontrol_data);
+			cc_data_temp &= ~str_mask;
+			cc_data_temp |= str_tab[i].sel << str_shift;
+			W_REG(osh, &cc->chipcontrol_data, cc_data_temp);
+			if (str_ovr_pmuval) { /* enables the selected drive strength */
+				W_REG(osh,  &cc->chipcontrol_addr, str_ovr_pmuctl);
+				OR_REG(osh, &cc->chipcontrol_data, str_ovr_pmuval);
+			}
+			PMU_MSG(("SDIO: %dmA drive strength requested; set to %dmA\n",
+			         drivestrength, str_tab[i].strength));
+		}
+		/* Return to original core */
+		si_restore_core(sih, origidx, intr_val);
+	}
+	else if (str_tab != NULL) {
 		uint32 cc_data_temp;
 		int i;
 
@@ -246,19 +276,16 @@ si_sdiod_drive_strength_init(si_t *sih, osl_t *osh, uint32 drivestrength)
 		if (i > 0 && drivestrength > str_tab[i].strength)
 			i--;
 
-		W_REG(osh, &cc->chipcontrol_addr, PMU_CHIPCTL1);
-		cc_data_temp = R_REG(osh, &cc->chipcontrol_data);
+		W_REG(osh, PMUREG(sih, chipcontrol_addr), PMU_CHIPCTL1);
+		cc_data_temp = R_REG(osh, PMUREG(sih, chipcontrol_data));
 		cc_data_temp &= ~str_mask;
 		cc_data_temp |= str_tab[i].sel << str_shift;
-		W_REG(osh, &cc->chipcontrol_data, cc_data_temp);
+		W_REG(osh, PMUREG(sih, chipcontrol_data), cc_data_temp);
 		if (str_ovr_pmuval) { /* enables the selected drive strength */
-			W_REG(osh,  &cc->chipcontrol_addr, str_ovr_pmuctl);
-			OR_REG(osh, &cc->chipcontrol_data, str_ovr_pmuval);
+			W_REG(osh,  PMUREG(sih, chipcontrol_addr), str_ovr_pmuctl);
+			OR_REG(osh, PMUREG(sih, chipcontrol_data), str_ovr_pmuval);
 		}
 		PMU_MSG(("SDIO: %dmA drive strength requested; set to %dmA\n",
 		         drivestrength, str_tab[i].strength));
 	}
-
-	/* Return to original core */
-	si_restore_core(sih, origidx, intr_val);
 } /* si_sdiod_drive_strength_init */

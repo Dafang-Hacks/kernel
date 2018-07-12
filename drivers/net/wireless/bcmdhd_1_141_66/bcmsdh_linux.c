@@ -3,7 +3,7 @@
  *
  * $Copyright Open Broadcom Corporation$
  *
- * $Id: bcmsdh_linux.c 461443 2014-03-12 02:40:59Z $
+ * $Id: bcmsdh_linux.c 461444 2014-03-12 02:55:28Z $
  */
 
 /**
@@ -29,7 +29,6 @@ extern void dhdsdio_isr(void * args);
 #if defined(CONFIG_ARCH_ODIN)
 #include <linux/platform_data/gpio-odin.h>
 #endif /* defined(CONFIG_ARCH_ODIN) */
-
 #include <dhd_linux.h>
 
 /* driver info, initialized when bcmsdh_register is called */
@@ -64,7 +63,7 @@ typedef struct bcmsdh_os_info {
 } bcmsdh_os_info_t;
 
 /* debugging macros */
-#define SDLX_MSG(x)
+#define SDLX_MSG(x) printf x
 
 /**
  * Checks to see if vendor and device IDs match a supported SDIO Host Controller.
@@ -148,7 +147,7 @@ void* bcmsdh_probe(osl_t *osh, void *dev, void *sdioh, void *adapter_info, uint 
 #if defined(OOB_INTR_ONLY)
 	spin_lock_init(&bcmsdh_osinfo->oob_irq_spinlock);
 	/* Get customer specific OOB IRQ parametres: IRQ number as IRQ type */
-	bcmsdh_osinfo->oob_irq_num = dhd_customer_oob_irq_map(adapter_info,
+	bcmsdh_osinfo->oob_irq_num = wifi_platform_get_irq_number(adapter_info,
 		&bcmsdh_osinfo->oob_irq_flags);
 	if  (bcmsdh_osinfo->oob_irq_num < 0) {
 		SDLX_MSG(("%s: Host OOB irq is not defined\n", __FUNCTION__));
@@ -320,10 +319,17 @@ int bcmsdh_oob_intr_register(bcmsdh_info_t *bcmsdh, bcmsdh_cb_fn_t oob_irq_handl
 		SDLX_MSG(("%s: irq is already registered\n", __FUNCTION__));
 		return -EBUSY;
 	}
-	SDLX_MSG(("%s OOB irq=%d flags=%X \n", __FUNCTION__,
+#ifdef HW_OOB
+	printf("%s: HW_OOB enabled\n", __FUNCTION__);
+#else
+	printf("%s: SW_OOB enabled\n", __FUNCTION__);
+#endif
+	SDLX_MSG(("%s OOB irq=%d flags=%X\n", __FUNCTION__,
 		(int)bcmsdh_osinfo->oob_irq_num, (int)bcmsdh_osinfo->oob_irq_flags));
 	bcmsdh_osinfo->oob_irq_handler = oob_irq_handler;
 	bcmsdh_osinfo->oob_irq_handler_context = oob_irq_handler_context;
+	bcmsdh_osinfo->oob_irq_enabled = TRUE;
+	bcmsdh_osinfo->oob_irq_registered = TRUE;
 #if defined(CONFIG_ARCH_ODIN)
 	err = odin_gpio_sms_request_irq(bcmsdh_osinfo->oob_irq_num, wlan_oob_irq,
 		bcmsdh_osinfo->oob_irq_flags, "bcmsdh_sdmmc", bcmsdh);
@@ -332,16 +338,25 @@ int bcmsdh_oob_intr_register(bcmsdh_info_t *bcmsdh, bcmsdh_cb_fn_t oob_irq_handl
 		bcmsdh_osinfo->oob_irq_flags, "bcmsdh_sdmmc", bcmsdh);
 #endif /* defined(CONFIG_ARCH_ODIN) */
 	if (err) {
+		bcmsdh_osinfo->oob_irq_enabled = FALSE;
+		bcmsdh_osinfo->oob_irq_registered = FALSE;
 		SDLX_MSG(("%s: request_irq failed with %d\n", __FUNCTION__, err));
 		return err;
 	}
 
-		err = enable_irq_wake(bcmsdh_osinfo->oob_irq_num);
-		if (!err)
-			bcmsdh_osinfo->oob_irq_wake_enabled = TRUE;
-	bcmsdh_osinfo->oob_irq_enabled = TRUE;
-	bcmsdh_osinfo->oob_irq_registered = TRUE;
-	return err;
+#if defined(DISABLE_WOWLAN)
+	SDLX_MSG(("%s: disable_irq_wake\n", __FUNCTION__));
+	bcmsdh_osinfo->oob_irq_wake_enabled = FALSE;
+#else
+	SDLX_MSG(("%s: enable_irq_wake\n", __FUNCTION__));
+	err = enable_irq_wake(bcmsdh_osinfo->oob_irq_num);
+	if (err)
+		SDLX_MSG(("%s: enable_irq_wake failed with %d\n", __FUNCTION__, err));
+	else
+		bcmsdh_osinfo->oob_irq_wake_enabled = TRUE;
+#endif
+
+	return 0;
 }
 
 void bcmsdh_oob_intr_unregister(bcmsdh_info_t *bcmsdh)
@@ -355,9 +370,9 @@ void bcmsdh_oob_intr_unregister(bcmsdh_info_t *bcmsdh)
 		return;
 	}
 	if (bcmsdh_osinfo->oob_irq_wake_enabled) {
-			err = disable_irq_wake(bcmsdh_osinfo->oob_irq_num);
-			if (!err)
-				bcmsdh_osinfo->oob_irq_wake_enabled = FALSE;
+		err = disable_irq_wake(bcmsdh_osinfo->oob_irq_num);
+		if (!err)
+			bcmsdh_osinfo->oob_irq_wake_enabled = FALSE;
 	}
 	if (bcmsdh_osinfo->oob_irq_enabled) {
 		disable_irq(bcmsdh_osinfo->oob_irq_num);
@@ -366,7 +381,7 @@ void bcmsdh_oob_intr_unregister(bcmsdh_info_t *bcmsdh)
 	free_irq(bcmsdh_osinfo->oob_irq_num, bcmsdh);
 	bcmsdh_osinfo->oob_irq_registered = FALSE;
 }
-#endif 
+#endif
 
 /* Module parameters specific to each host-controller driver */
 

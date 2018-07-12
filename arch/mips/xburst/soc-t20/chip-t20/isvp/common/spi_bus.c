@@ -5,42 +5,6 @@
 #include <mach/jzssi.h>
 #include "board_base.h"
 
-#ifdef CONFIG_SPI0_V12_JZ
-static struct spi_board_info jz_spi0_board_info[] = {
-	[0] = {
-		.modalias       = "spidev",
-		.bus_num        = 0,
-		.chip_select    = 0,
-		.max_speed_hz   = 1200000,
-	},
-};
-
-struct jz_spi_info spi0_info_cfg = {
-	.chnl = 0,
-	.bus_num = 0,
-	.max_clk = 54000000,
-	.num_chipselect = 2,
-};
-#endif
-
-#ifdef CONFIG_SPI1_V12_JZ
-static struct spi_board_info jz_spi1_board_info[] = {
-	[0] = {
-		.modalias       = "spidev",
-		.bus_num        = 1,
-		.chip_select    = 1,
-		.max_speed_hz   = 120000,
-	},
-};
-
-struct jz_spi_info spi1_info_cfg = {
-	.chnl = 1,
-	.bus_num = 1,
-	.max_clk = 54000000,
-	.num_chipselect = 2,
-};
-#endif
-
 #if defined(CONFIG_SPI_GPIO)
 static struct spi_gpio_platform_data jz4780_spi_gpio_data = {
 	.sck	= GPIO_SPI_SCK,
@@ -170,7 +134,6 @@ struct spi_nor_platform_data spi_nor_pdata[] = {
 		.quad_mode = &flash_quad_mode[0],
 #endif
 	},
-
 	{
 		.name           = "GD25Q64C",
 		.pagesize       = 256,
@@ -204,6 +167,27 @@ struct spi_nor_platform_data spi_nor_pdata[] = {
 		.num_block_info = ARRAY_SIZE(flash_block_info),
 
 		.addrsize       = 3,
+		.pp_maxbusy     = 3,            /* 3ms */
+		.se_maxbusy     = 400,          /* 400ms */
+		.ce_maxbusy     = 8 * 10000,    /* 80s */
+
+		.st_regnum      = 3,
+#ifdef CONFIG_SPI_QUAD
+		.quad_mode = &flash_quad_mode[0],
+#endif
+	},
+	{
+		.name           = "GD25Q256",
+		.pagesize       = 256,
+		.sectorsize     = 4 * 1024,
+		.chipsize       = 32768 * 1024,
+		.erasesize      = 32 * 1024,
+		.id             = 0xc84019,
+
+		.block_info     = flash_block_info,
+		.num_block_info = ARRAY_SIZE(flash_block_info),
+
+		.addrsize       = 4,
 		.pp_maxbusy     = 3,            /* 3ms */
 		.se_maxbusy     = 400,          /* 400ms */
 		.ce_maxbusy     = 8 * 10000,    /* 80s */
@@ -252,7 +236,7 @@ struct spi_nor_platform_data spi_nor_pdata[] = {
 
 		.st_regnum      = 3,
 #ifdef CONFIG_SPI_QUAD
-		.quad_mode = &flash_quad_mode[0],
+		.quad_mode = &flash_quad_mode[1],
 #endif
 	},
 	{
@@ -273,7 +257,7 @@ struct spi_nor_platform_data spi_nor_pdata[] = {
 
 		.st_regnum      = 3,
 #ifdef CONFIG_SPI_QUAD
-		.quad_mode = &flash_quad_mode[0],
+		.quad_mode = &flash_quad_mode[1],
 #endif
 	},
 	{
@@ -319,12 +303,96 @@ struct spi_nor_platform_data spi_nor_pdata[] = {
 #endif
 	},
 	{
+		.name           = "XT25F128A",
+		.pagesize       = 256,
+		.sectorsize     = 4 * 1024,
+		.chipsize       = 16384 * 1024,
+		.erasesize      = 32 * 1024,
+		.id             = 0x207018,
+
+		.block_info     = flash_block_info,
+		.num_block_info = ARRAY_SIZE(flash_block_info),
+
+		.addrsize       = 3,
+		.pp_maxbusy     = 3,            /* 4ms */
+		.se_maxbusy     = 400,          /* 400ms */
+		.ce_maxbusy     = 8 * 10000,    /* 80s */
+
+		.st_regnum      = 3,
+#ifdef CONFIG_SPI_QUAD
+		.quad_mode = &flash_quad_mode[1],
+#endif
+	},
+	{
 		.name           = "FM25Q64A",
 		.pagesize       = 256,
 		.sectorsize     = 4 * 1024,
 		.chipsize       = 8192 * 1024,
 		.erasesize      = 32 * 1024,
 		.id             = 0xF83217,
+
+		.block_info     = flash_block_info,
+		.num_block_info = ARRAY_SIZE(flash_block_info),
+
+		.addrsize       = 3,
+		.pp_maxbusy     = 3,            /* 3ms */
+		.se_maxbusy     = 400,          /* 400ms */
+		.ce_maxbusy     = 8 * 10000,    /* 80s */
+
+		.st_regnum      = 3,
+#ifdef CONFIG_SPI_QUAD
+		.quad_mode = &flash_quad_mode[0],
+#endif
+	},
+	{
+		.name           = "MX25L25645G",
+		.pagesize       = 256,
+		.sectorsize     = 4 * 1024,
+		.chipsize       = 32768 * 1024,
+		.erasesize      = 32 * 1024,
+		.id             = 0xc22019,
+
+		.block_info     = flash_block_info,
+		.num_block_info = ARRAY_SIZE(flash_block_info),
+
+		.addrsize       = 4,
+		.pp_maxbusy     = 4,            /* 4ms */
+		.se_maxbusy     = 400,          /* 400ms */
+		.ce_maxbusy     = 8 * 10000,    /* 80s */
+
+		.st_regnum      = 3,
+#ifdef CONFIG_SPI_QUAD
+		.quad_mode = &flash_quad_mode[1],
+#endif
+	},
+	{
+		.name           = "W25Q256JV",
+		.pagesize       = 256,
+		.sectorsize     = 4 * 1024,
+		.chipsize       = (32 * 1024 * 1024),
+		.erasesize      = 32 * 1024,
+		.id             = 0xef4019,
+
+		.block_info     = flash_block_info,
+		.num_block_info = ARRAY_SIZE(flash_block_info),
+
+		.addrsize       = 4,
+		.pp_maxbusy     = 4,            /* 3ms */
+		.se_maxbusy     = 400,          /* 400ms */
+		.ce_maxbusy     = 8 * 10000,    /* 80s */
+
+		.st_regnum      = 3,
+#ifdef CONFIG_SPI_QUAD
+		.quad_mode = &flash_quad_mode[0],
+#endif
+	},
+	{
+		.name           = "BY25Q64AS",
+		.pagesize       = 256,
+		.sectorsize     = 4 * 1024,
+		.chipsize       =( 8 * 1024 * 1024 ),
+		.erasesize      = 32 * 1024,
+		.id             = 0x684017,
 
 		.block_info     = flash_block_info,
 		.num_block_info = ARRAY_SIZE(flash_block_info),

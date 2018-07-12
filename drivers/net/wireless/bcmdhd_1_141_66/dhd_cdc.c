@@ -3,7 +3,7 @@
  *
  * $Copyright Open Broadcom Corporation$
  *
- * $Id: dhd_cdc.c 482271 2014-06-03 04:43:44Z $
+ * $Id: dhd_cdc.c 492377 2014-07-21 19:54:06Z $
  *
  * BDC is like CDC, except it includes a header for data packets to convey
  * packet priority over the bus, and flags (e.g. to indicate checksum status
@@ -83,9 +83,6 @@ dhdcdc_cmplt(dhd_pub_t *dhd, uint32 id, uint32 len)
 
 	DHD_TRACE(("%s: Enter\n", __FUNCTION__));
 
-#if defined(CUSTOMER_HW5)
-	DHD_OS_WAKE_LOCK(dhd);
-#endif 
 
 	do {
 		ret = dhd_bus_rxctl(dhd->bus, (uchar*)&prot->msg, cdc_len);
@@ -93,9 +90,6 @@ dhdcdc_cmplt(dhd_pub_t *dhd, uint32 id, uint32 len)
 			break;
 	} while (CDC_IOC_ID(ltoh32(prot->msg.flags)) != id);
 
-#if defined(CUSTOMER_HW5)
-	DHD_OS_WAKE_UNLOCK(dhd);
-#endif 
 
 	return ret;
 }
@@ -259,6 +253,7 @@ dhd_prot_ioctl(dhd_pub_t *dhd, int ifidx, wl_ioctl_t * ioc, void * buf, int len)
 	dhd_prot_t *prot = dhd->prot;
 	int ret = -1;
 	uint8 action;
+	static int error_cnt = 0;
 
 	if ((dhd->busstate == DHD_BUS_DOWN) || dhd->hang_was_sent) {
 		DHD_ERROR(("%s : bus is down. we have nothing to do\n", __FUNCTION__));
@@ -292,6 +287,13 @@ dhd_prot_ioctl(dhd_pub_t *dhd, int ifidx, wl_ioctl_t * ioc, void * buf, int len)
 		if (ret > 0)
 			ioc->used = ret - sizeof(cdc_ioctl_t);
 	}
+	// terence 20130805: send hang event to wpa_supplicant
+	if (ret == -EIO) {
+		error_cnt++;
+		if (error_cnt > 2)
+			ret = -ETIMEDOUT;
+	} else
+		error_cnt = 0;
 
 	/* Too many programs assume ioctl() returns 0 on success */
 	if (ret >= 0)
@@ -367,6 +369,17 @@ dhd_prot_hdrpush(dhd_pub_t *dhd, int ifidx, void *PKTBUF)
 }
 #undef PKTBUF	/* Only defined in the above routine */
 
+uint
+dhd_prot_hdrlen(dhd_pub_t *dhd, void *PKTBUF)
+{
+	uint hdrlen = 0;
+#ifdef BDC
+	/* Length of BDC(+WLFC) headers pushed */
+	hdrlen = BDC_HEADER_LEN + (((struct bdc_header *)PKTBUF)->dataOffset * 4);
+#endif
+	return hdrlen;
+}
+
 int
 dhd_prot_hdrpull(dhd_pub_t *dhd, int *ifidx, void *pktbuf, uchar *reorder_buf_info,
 	uint *reorder_info_len)
@@ -424,12 +437,14 @@ dhd_prot_hdrpull(dhd_pub_t *dhd, int *ifidx, void *pktbuf, uchar *reorder_buf_in
 	PKTPULL(dhd->osh, pktbuf, BDC_HEADER_LEN);
 #endif /* BDC */
 
-#if defined(NDISVER) && (NDISVER < 0x0630)
+#if defined(NDISVER)
+#if (NDISVER < 0x0630)
 	if (PKTLEN(dhd->osh, pktbuf) < (uint32) (data_offset << 2)) {
 		DHD_ERROR(("%s: rx data too short (%d < %d)\n", __FUNCTION__,
 		           PKTLEN(dhd->osh, pktbuf), (data_offset * 4)));
 		return BCME_ERROR;
 	}
+#endif /* #if defined(NDISVER) */
 #endif /* (NDISVER < 0x0630) */
 
 #ifdef PROP_TXSTATUS
@@ -493,7 +508,8 @@ dhd_prot_detach(dhd_pub_t *dhd)
 void
 dhd_prot_dstats(dhd_pub_t *dhd)
 {
-/* No stats from dongle added yet, copy bus stats */
+	/*  copy bus stats */
+
 	dhd->dstats.tx_packets = dhd->tx_packets;
 	dhd->dstats.tx_errors = dhd->tx_errors;
 	dhd->dstats.rx_packets = dhd->rx_packets;
@@ -504,7 +520,7 @@ dhd_prot_dstats(dhd_pub_t *dhd)
 }
 
 int
-dhd_prot_init(dhd_pub_t *dhd)
+dhd_sync_with_dongle(dhd_pub_t *dhd)
 {
 	int ret = 0;
 	wlc_rev_info_t revinfo;
@@ -518,13 +534,23 @@ dhd_prot_init(dhd_pub_t *dhd)
 		goto done;
 
 
+	dhd_process_cid_mac(dhd, TRUE);
+
 	ret = dhd_preinit_ioctls(dhd);
+
+	if (!ret)
+		dhd_process_cid_mac(dhd, FALSE);
 
 	/* Always assumes wl for now */
 	dhd->iswl = TRUE;
 
 done:
 	return ret;
+}
+
+int dhd_prot_init(dhd_pub_t *dhd)
+{
+	return TRUE;
 }
 
 void

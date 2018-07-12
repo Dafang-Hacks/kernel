@@ -657,7 +657,6 @@ static int genphy_config_advert(struct phy_device *phydev)
 		 ADVERTISE_PAUSE_ASYM);
 	adv |= ethtool_adv_to_mii_adv_t(advertise);
 
-#if 0
 	if (adv != oldadv) {
 		err = phy_write(phydev, MII_ADVERTISE, adv);
 
@@ -665,7 +664,7 @@ static int genphy_config_advert(struct phy_device *phydev)
 			return err;
 		changed = 1;
 	}
-#endif
+
 	/* Configure gigabit if it's supported */
 	if (phydev->supported & (SUPPORTED_1000baseT_Half |
 				SUPPORTED_1000baseT_Full)) {
@@ -922,7 +921,7 @@ static int genphy_config_init(struct phy_device *phydev)
 	 * all possible port types */
 	features = (SUPPORTED_TP | SUPPORTED_MII
 			| SUPPORTED_AUI | SUPPORTED_FIBRE |
-			SUPPORTED_BNC);
+			SUPPORTED_BNC | SUPPORTED_Pause | SUPPORTED_Asym_Pause);
 
 	/* Do we support autonegotiation? */
 	val = phy_read(phydev, MII_BMSR);
