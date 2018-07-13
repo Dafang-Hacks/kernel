@@ -69,6 +69,7 @@
 #define RF3320				0x000b
 #define RF3322				0x000c
 #define RF3053				0x000d
+#define RF3070              0x3070
 #define RF5592				0x000f
 #define RF3290				0x3290
 #define RF5360				0x5360
