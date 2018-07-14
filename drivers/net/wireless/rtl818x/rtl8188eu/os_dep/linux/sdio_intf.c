@@ -26,6 +26,13 @@
 #include <xmit_osdep.h>
 #include <rtw_version.h>
 
+extern int bcm_customer_wlan_get_oob_irq(void);
+extern int bcm_wlan_power_off(int flag);
+extern int bcm_wlan_power_on(int flag);
+extern int bcm_manual_detect(int on);
+#define RESET 0
+#define NORMAL 1
+
 #ifndef CONFIG_SDIO_HCI
 #error "CONFIG_SDIO_HCI shall be on!\n"
 #endif
@@ -1842,7 +1849,15 @@ static int __init rtw_drv_entry(void)
 //	DBG_871X(KERN_INFO "+%s", __func__);
 	RT_TRACE(_module_hci_intfs_c_, _drv_notice_, ("+rtw_drv_entry\n"));
 	DBG_871X(DRV_NAME " driver version=%s\n", DRIVERVERSION);
-	DBG_871X("build time: %s %s\n", __DATE__, __TIME__);
+	DBG_871X("DafangHacks!");
+	bcm_manual_detect(1);
+	bcm_wlan_power_on(NORMAL);
+
+
+	DBG_871X("TEst time: %s %s\n", __DATE__, __TIME__);
+
+
+
 
 #ifdef CONFIG_PLATFORM_ARM_SUNxI
 /*depends on sunxi power control */
