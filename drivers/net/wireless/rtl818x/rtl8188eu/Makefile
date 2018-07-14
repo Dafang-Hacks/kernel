@@ -81,6 +81,7 @@ CONFIG_PLATFORM_ARM_SUN7I = n
 CONFIG_PLATFORM_ACTIONS_ATM702X = n
 CONFIG_PLATFORM_MN10300 = n
 CONFIG_PLATFORM_ACTIONS_ATV5201 = n
+USER_MODULE_NAME=rtl8189es
 
 CONFIG_DRVEXT_MODULE = n
 
@@ -305,7 +306,7 @@ _HAL_INTFS_FILES += $(CHIP_FILES)
 ifeq ($(CONFIG_AUTOCFG_CP), y)
 
 ifeq ($(CONFIG_RTL8188E)$(CONFIG_SDIO_HCI),yy)
-$(shell cp $(TopDIR)/autoconf_rtl8189e_$(HCI_NAME)_linux.h $(TopDIR)/include/autoconf.h)
+# $(shell cp $(TopDIR)/autoconf_rtl8189e_$(HCI_NAME)_linux.h $(TopDIR)/include/autoconf.h)
 else
 $(shell cp $(TopDIR)/autoconf_$(RTL871X)_$(HCI_NAME)_linux.h $(TopDIR)/include/autoconf.h)
 endif
