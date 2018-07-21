@@ -44,6 +44,13 @@ static int wlan_en_gpio = -1;
 static struct mmc_host *mmc_host = NULL;
 #endif
 
+extern int bcm_customer_wlan_get_oob_irq(void);
+extern int bcm_wlan_power_off(int flag);
+extern int bcm_wlan_power_on(int flag);
+extern int bcm_manual_detect(int on);
+#define RESET 0
+#define NORMAL 1
+
 static const struct sdio_device_id sdio_ids[] =
 {
 #ifdef CONFIG_RTL8723B
@@ -977,6 +984,11 @@ static int __init rtw_drv_entry(void)
 
 	DBG_871X_LEVEL(_drv_always_, "module init start\n");
 	dump_drv_version(RTW_DBGDUMP);
+    DBG_871X(DRV_NAME " driver version=%s\n", DRIVERVERSION);
+    DBG_871X("DafangHacks!");
+    bcm_manual_detect(1);
+    bcm_wlan_power_on(NORMAL);
+
 #ifdef BTCOEXVERSION
 	DBG_871X_LEVEL(_drv_always_, DRV_NAME" BT-Coex version = %s\n", BTCOEXVERSION);
 #endif // BTCOEXVERSION
