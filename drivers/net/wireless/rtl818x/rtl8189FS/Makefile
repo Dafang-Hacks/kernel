@@ -1651,7 +1651,7 @@ endif
 
 endif
 
-USER_MODULE_NAME ?=
+USER_MODULE_NAME=rtl8189fs
 ifneq ($(USER_MODULE_NAME),)
 MODULE_NAME := $(USER_MODULE_NAME)
 endif
