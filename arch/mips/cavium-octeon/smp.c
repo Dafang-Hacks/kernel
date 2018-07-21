@@ -255,6 +255,8 @@ static void octeon_cpus_done(void)
 /* State of each CPU. */
 DEFINE_PER_CPU(int, cpu_state);
 
+extern void fixup_irqs(void);
+
 static int octeon_cpu_disable(void)
 {
 	unsigned int cpu = smp_processor_id();
@@ -265,7 +267,7 @@ static int octeon_cpu_disable(void)
 	set_cpu_online(cpu, false);
 	cpu_clear(cpu, cpu_callin_map);
 	local_irq_disable();
-	octeon_fixup_irqs();
+	fixup_irqs();
 	local_irq_enable();
 
 	flush_cache_all();

@@ -80,7 +80,7 @@ config INPUT_MATRIXKMAP
 comment "Userland interfaces"
 
 config INPUT_MOUSEDEV
-	tristate "Mouse interface" if EXPERT
+	tristate "Mouse interface"
 	default y
 	help
 	  Say Y here if you want your mouse to be accessible as char devices
@@ -173,15 +173,6 @@ config INPUT_APMPOWER
 
 	  To compile this driver as a module, choose M here: the
 	  module will be called apm-power.
-
-config INPUT_KEYRESET
-	tristate "Reset key"
-	depends on INPUT
-	---help---
-	  Say Y here if you want to reboot when some keys are pressed;
-
-	  To compile this driver as a module, choose M here: the
-	  module will be called keyreset.
 
 comment "Input Device Drivers"
 

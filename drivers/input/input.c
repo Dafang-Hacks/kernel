@@ -27,7 +27,6 @@
 #include <linux/device.h>
 #include <linux/mutex.h>
 #include <linux/rcupdate.h>
-#include <linux/fb.h>
 #include "input-compat.h"
 
 MODULE_AUTHOR("Vojtech Pavlik <vojtech@suse.cz>");
@@ -258,9 +257,10 @@ static int input_handle_abs_event(struct input_dev *dev,
 }
 
 static int input_get_disposition(struct input_dev *dev,
-			  unsigned int type, unsigned int code, int value)
+			  unsigned int type, unsigned int code, int *pval)
 {
 	int disposition = INPUT_IGNORE_EVENT;
+	int value = *pval;
 
 	switch (type) {
 
@@ -358,6 +358,7 @@ static int input_get_disposition(struct input_dev *dev,
 		break;
 	}
 
+	*pval = value;
 	return disposition;
 }
 
@@ -366,7 +367,7 @@ static void input_handle_event(struct input_dev *dev,
 {
 	int disposition;
 
-	disposition = input_get_disposition(dev, type, code, value);
+	disposition = input_get_disposition(dev, type, code, &value);
 
 	if ((disposition & INPUT_PASS_TO_DEVICE) && dev->event)
 		dev->event(dev, type, code, value);
@@ -1867,6 +1868,10 @@ void input_set_capability(struct input_dev *dev, unsigned int type, unsigned int
 		break;
 
 	case EV_ABS:
+		input_alloc_absinfo(dev);
+		if (!dev->absinfo)
+			return;
+
 		__set_bit(code, dev->absbit);
 		break;
 
@@ -1980,9 +1985,6 @@ static void __input_unregister_device(struct input_dev *dev)
 
 	input_wakeup_procfs_readers();
 
-#ifdef CONFIG_FBBLANK_SUSPEND_TS
-	fb_unregister_client(&dev->fb_notif);
-#endif
 	mutex_unlock(&input_mutex);
 
 	device_del(&dev->dev);
@@ -1997,38 +1999,6 @@ static void devm_input_device_unregister(struct device *dev, void *res)
 		__func__, dev_name(&input->dev));
 	__input_unregister_device(input);
 }
-
-#ifdef CONFIG_FBBLANK_SUSPEND_TS
-static int fb_notifier_callback(struct notifier_block *self,unsigned long event, void *data)
-{
-	struct input_dev *dev;
-
-	/* If we aren't interested in this event, skip it immediately ... */
-	switch (event) {
-		case FB_EVENT_BLANK:
-		case FB_EVENT_MODE_CHANGE:
-		case FB_EVENT_MODE_CHANGE_ALL:
-		case FB_EARLY_EVENT_BLANK:
-		case FB_R_EARLY_EVENT_BLANK:
-			break;
-		default:
-			return 0;
-	}
-
-	dev = container_of(self, struct input_dev, fb_notif);
-
-	mutex_lock(&dev->mutex);
-	if (event == FB_EVENT_BLANK) {
-		if (dev->users && dev->open)
-			dev->open(dev);
-	} else {
-		if (dev->users && dev->close)
-			dev->close(dev);
-	}
-	mutex_unlock(&dev->mutex);
-	return 0;
-}
-#endif
 
 /**
  * input_register_device - register device with input core
@@ -2140,16 +2110,6 @@ int input_register_device(struct input_dev *dev)
 			__func__, dev_name(&dev->dev));
 		devres_add(dev->dev.parent, devres);
 	}
-#ifdef CONFIG_FBBLANK_SUSPEND_TS
-	memset(&dev->fb_notif, 0, sizeof(dev->fb_notif));
-	dev->fb_notif.notifier_call = fb_notifier_callback;
-
-	if (test_bit(BTN_TOUCH, dev->keybit) && test_bit(ABS_MT_POSITION_X, dev->absbit) && test_bit(ABS_MT_POSITION_Y, dev->absbit)) {
-		return fb_register_client(&dev->fb_notif);
-	} else if (test_bit(BTN_TOUCH, dev->keybit) && test_bit(ABS_X, dev->absbit) && test_bit(ABS_Y, dev->absbit)) {
-		return fb_register_client(&dev->fb_notif);
-	}
-#endif
 	return 0;
 
 err_device_del:

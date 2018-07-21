@@ -1961,9 +1961,5 @@ struct v4l2_create_buffers {
    drivers/media/video/v4l2-compat-ioctl32.c as well! */
 
 #define BASE_VIDIOC_PRIVATE	192		/* 192-255 are private */
-#if 1
-/* Additional, the command is used for monitoring whether the v4l2-buffer is ready.
-   The command is added by xhshen, who is from ingenic company. */
-#define VIDIOC_DEFAULT_CMD_LISTEN_BUF	 _IOR('V', BASE_VIDIOC_PRIVATE - 1, int)
-#endif
+
 #endif /* _UAPI__LINUX_VIDEODEV2_H */

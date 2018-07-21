@@ -140,6 +140,7 @@ static int ehci_hcd_sead3_drv_remove(struct platform_device *pdev)
 
 	usb_remove_hcd(hcd);
 	usb_put_hcd(hcd);
+	platform_set_drvdata(pdev, NULL);
 
 	return 0;
 }

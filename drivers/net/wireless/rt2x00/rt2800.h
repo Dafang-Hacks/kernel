@@ -69,7 +69,6 @@
 #define RF3320				0x000b
 #define RF3322				0x000c
 #define RF3053				0x000d
-#define RF3070              0x3070
 #define RF5592				0x000f
 #define RF3290				0x3290
 #define RF5360				0x5360
@@ -1921,7 +1920,7 @@ struct mac_iveiv_entry {
  * 2 - drop tx power by 12dBm,
  * 3 - increase tx power by 6dBm
  */
-#define BBP1_TX_POWER_CTRL		FIELD8(0x07)
+#define BBP1_TX_POWER_CTRL		FIELD8(0x03)
 #define BBP1_TX_ANTENNA			FIELD8(0x18)
 
 /*

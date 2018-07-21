@@ -33,9 +33,6 @@
 #define PAGE_SIZE	(_AC(1,UL) << PAGE_SHIFT)
 #define PAGE_MASK	(~((1 << PAGE_SHIFT) - 1))
 
-/* this is used for calculation of real page sizes and should be the same */
-#define BASIC_PAGE_SHIFT    12
-
 #ifdef CONFIG_MIPS_HUGE_TLB_SUPPORT
 #define HPAGE_SHIFT	(PAGE_SHIFT + PAGE_SHIFT - 3)
 #define HPAGE_SIZE	(_AC(1,UL) << HPAGE_SHIFT)
@@ -73,16 +70,13 @@ static inline unsigned long pages_do_alias(unsigned long addr1,
 
 struct page;
 
-#include <asm/cpu-features.h>
-
 static inline void clear_user_page(void *addr, unsigned long vaddr,
 	struct page *page)
 {
 	extern void (*flush_data_cache_page)(unsigned long addr);
 
 	clear_page(addr);
-	if (cpu_has_vtag_dcache || (cpu_has_dc_aliases &&
-	     pages_do_alias((unsigned long) addr, vaddr & PAGE_MASK)))
+	if (pages_do_alias((unsigned long) addr, vaddr & PAGE_MASK))
 		flush_data_cache_page((unsigned long)addr);
 }
 
@@ -171,9 +165,7 @@ typedef struct { unsigned long pgprot; } pgprot_t;
  * https://patchwork.linux-mips.org/patch/1541/
  */
 
-#ifndef __pa_symbol
-#define __pa_symbol(x)  __pa(RELOC_HIDE((unsigned long)(x), 0))
-#endif
+#define __pa_symbol(x)	__pa(RELOC_HIDE((unsigned long)(x), 0))
 
 #define pfn_to_kaddr(pfn)	__va((pfn) << PAGE_SHIFT)
 
@@ -210,13 +202,13 @@ extern int __virt_addr_valid(const volatile void *kaddr);
 #define virt_addr_valid(kaddr)						\
 	__virt_addr_valid((const volatile void *) (kaddr))
 
-#define VM_DATA_DEFAULT_FLAGS   (VM_READ | VM_WRITE | \
-				 VM_MAYREAD | VM_MAYWRITE | VM_MAYEXEC)
-#define VM_STACK_DEFAULT_FLAGS   (VM_READ | VM_WRITE | VM_EXEC | \
+#define VM_DATA_DEFAULT_FLAGS	(VM_READ | VM_WRITE | VM_EXEC | \
 				 VM_MAYREAD | VM_MAYWRITE | VM_MAYEXEC)
 
-#define UNCAC_ADDR(addr)	((addr) - PAGE_OFFSET + UNCAC_BASE)
-#define CAC_ADDR(addr)		((addr) - UNCAC_BASE + PAGE_OFFSET)
+#define UNCAC_ADDR(addr)	((addr) - PAGE_OFFSET + UNCAC_BASE +	\
+								PHYS_OFFSET)
+#define CAC_ADDR(addr)		((addr) - UNCAC_BASE + PAGE_OFFSET -	\
+								PHYS_OFFSET)
 
 #include <asm-generic/memory_model.h>
 #include <asm-generic/getorder.h>

@@ -68,12 +68,10 @@ struct rt_sigframe {
 static int protected_save_fp_context(struct sigcontext __user *sc)
 {
 	int err;
-#ifndef CONFIG_EVA
 	while (1) {
 		lock_fpu_owner();
-		err = own_fpu_inatomic(1);
-		if (!err)
-			err = save_fp_context(sc); /* this might fail */
+		own_fpu_inatomic(1);
+		err = save_fp_context(sc); /* this might fail */
 		unlock_fpu_owner();
 		if (likely(!err))
 			break;
@@ -84,22 +82,16 @@ static int protected_save_fp_context(struct sigcontext __user *sc)
 		if (err)
 			break;	/* really bad sigcontext */
 	}
-#else
-	lose_fpu(1);
-	err = save_fp_context(sc); /* this might fail */
-#endif  /* CONFIG_EVA */
 	return err;
 }
 
 static int protected_restore_fp_context(struct sigcontext __user *sc)
 {
 	int err, tmp __maybe_unused;
-#ifndef CONFIG_EVA
 	while (1) {
 		lock_fpu_owner();
-		err = own_fpu_inatomic(0);
-		if (!err)
-			err = restore_fp_context(sc); /* this might fail */
+		own_fpu_inatomic(0);
+		err = restore_fp_context(sc); /* this might fail */
 		unlock_fpu_owner();
 		if (likely(!err))
 			break;
@@ -110,10 +102,6 @@ static int protected_restore_fp_context(struct sigcontext __user *sc)
 		if (err)
 			break;	/* really bad sigcontext */
 	}
-#else
-	lose_fpu(0);
-	err = restore_fp_context(sc); /* this might fail */
-#endif  /* CONFIG_EVA */
 	return err;
 }
 
@@ -596,7 +584,6 @@ asmlinkage void do_notify_resume(struct pt_regs *regs, void *unused,
 }
 
 #ifdef CONFIG_SMP
-#ifndef CONFIG_EVA
 static int smp_save_fp_context(struct sigcontext __user *sc)
 {
 	return raw_cpu_has_fpu
@@ -611,11 +598,9 @@ static int smp_restore_fp_context(struct sigcontext __user *sc)
 	       : fpu_emulator_restore_context(sc);
 }
 #endif
-#endif
 
 static int signal_setup(void)
 {
-#ifndef CONFIG_EVA
 #ifdef CONFIG_SMP
 	/* For now just do the cpu_has_fpu check when the functions are invoked */
 	save_fp_context = smp_save_fp_context;
@@ -628,11 +613,7 @@ static int signal_setup(void)
 		save_fp_context = fpu_emulator_save_context;
 		restore_fp_context = fpu_emulator_restore_context;
 	}
-#endif /* CONFIG_SMP */
-#else
-	save_fp_context = fpu_emulator_save_context;
-	restore_fp_context = fpu_emulator_restore_context;
-#endif /* CONFIG_EVA */
+#endif
 
 	return 0;
 }

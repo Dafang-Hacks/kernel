@@ -635,7 +635,7 @@ static void octeon_irq_cpu_offline_ciu(struct irq_data *data)
 		cpumask_clear(&new_affinity);
 		cpumask_set_cpu(cpumask_first(cpu_online_mask), &new_affinity);
 	}
-	__irq_set_affinity_locked(data, &new_affinity);
+	irq_set_affinity_locked(data, &new_affinity, false);
 }
 
 static int octeon_irq_ciu_set_affinity(struct irq_data *data,
@@ -1776,7 +1776,7 @@ asmlinkage void plat_irq_dispatch(void)
 
 #ifdef CONFIG_HOTPLUG_CPU
 
-void octeon_fixup_irqs(void)
+void fixup_irqs(void)
 {
 	irq_cpu_offline();
 }

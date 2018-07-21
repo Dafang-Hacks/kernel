@@ -16,14 +16,12 @@
 #include <linux/smp.h>
 #include <linux/threads.h>
 #include <linux/cpumask.h>
-#include <linux/cache.h>
 
 #include <linux/atomic.h>
 #include <asm/smp-ops.h>
-#include <asm/percpu.h>
 
 extern int smp_num_siblings;
-DECLARE_PER_CPU_SHARED_ALIGNED(cpumask_t, cpu_sibling_map);
+extern cpumask_t cpu_sibling_map[];
 
 #define raw_smp_processor_id() (current_thread_info()->cpu)
 

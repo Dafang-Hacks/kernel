@@ -149,16 +149,7 @@ symbol		=	value
 		pref	hint, addr;			\
 		.set	pop
 
-#ifdef CONFIG_EVA
-#define PREFE(hint,addr)                                \
-		.set	push;				\
-		.set	mips4;				\
-		.set    eva;                            \
-		prefe   hint, addr;                     \
-		.set	pop
-#endif
-
-#define PREFX(hint,addr)                                \
+#define PREFX(hint,addr)				\
 		.set	push;				\
 		.set	mips4;				\
 		prefx	hint, addr;			\
@@ -167,7 +158,6 @@ symbol		=	value
 #else /* !CONFIG_CPU_HAS_PREFETCH */
 
 #define PREF(hint, addr)
-#define PREFE(hint, addr)
 #define PREFX(hint, addr)
 
 #endif /* !CONFIG_CPU_HAS_PREFETCH */

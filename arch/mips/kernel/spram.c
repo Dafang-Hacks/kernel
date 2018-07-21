@@ -204,10 +204,8 @@ void __cpuinit spram_config(void)
 	switch (c->cputype) {
 	case CPU_24K:
 	case CPU_34K:
-	case CPU_1004K:
 	case CPU_74K:
-	case CPU_PROAPTIV:
-	case CPU_INTERAPTIV:
+	case CPU_1004K:
 		config0 = read_c0_config();
 		/* FIXME: addresses are Malta specific */
 		if (config0 & (1<<24)) {

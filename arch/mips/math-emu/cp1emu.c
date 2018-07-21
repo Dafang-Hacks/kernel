@@ -417,20 +417,14 @@ static int microMIPS32_to_MIPS32(union mips_instruction *insn_ptr)
 			case mm_mtc1_op:
 			case mm_cfc1_op:
 			case mm_ctc1_op:
-			case mm_mfhc1_op:
-			case mm_mthc1_op:
 				if (insn.mm_fp1_format.op == mm_mfc1_op)
 					op = mfc_op;
 				else if (insn.mm_fp1_format.op == mm_mtc1_op)
 					op = mtc_op;
 				else if (insn.mm_fp1_format.op == mm_cfc1_op)
 					op = cfc_op;
-				else if (insn.mm_fp1_format.op == mm_ctc1_op)
-					op = ctc_op;
-				else if (insn.mm_fp1_format.op == mm_mfhc1_op)
-					op = mfhc_op;
 				else
-					op = mthc_op;
+					op = ctc_op;
 				mips32_insn.fp1_format.opcode = cop1_op;
 				mips32_insn.fp1_format.op = op;
 				mips32_insn.fp1_format.rt =
@@ -476,9 +470,6 @@ int mm_isBranchInstr(struct pt_regs *regs, struct mm_decoded_insn dec_insn,
 	int bc_false = 0;
 	unsigned int fcr31;
 	unsigned int bit;
-
-	if (!cpu_has_mmips)
-		return 0;
 
 	switch (insn.mm_i_format.opcode) {
 	case mm_pool32a_op:
@@ -693,9 +684,11 @@ static int isBranchInstr(struct pt_regs *regs, struct mm_decoded_insn dec_insn,
 	case spec_op:
 		switch (insn.r_format.func) {
 		case jalr_op:
-			regs->regs[insn.r_format.rd] =
-				regs->cp0_epc + dec_insn.pc_inc +
-				dec_insn.next_pc_inc;
+			if (insn.r_format.rd != 0) {
+				regs->regs[insn.r_format.rd] =
+					regs->cp0_epc + dec_insn.pc_inc +
+					dec_insn.next_pc_inc;
+			}
 			/* Fall through */
 		case jr_op:
 			*contpc = regs->regs[insn.r_format.rs];
@@ -868,7 +861,13 @@ static int isBranchInstr(struct pt_regs *regs, struct mm_decoded_insn dec_insn,
  */
 static inline int cop1_64bit(struct pt_regs *xcp)
 {
+#if defined(CONFIG_64BIT) && !defined(CONFIG_MIPS32_O32)
+	return 1;
+#elif defined(CONFIG_64BIT) && defined(CONFIG_MIPS32_O32)
 	return !test_thread_flag(TIF_32BIT_REGS);
+#else
+	return 0;
+#endif
 }
 
 #define SIFROMREG(si, x) ((si) = cop1_64bit(xcp) || !(x & 1) ? \
@@ -886,10 +885,6 @@ static inline int cop1_64bit(struct pt_regs *xcp)
 #define SPTOREG(sp, x)	SITOREG((sp).bits, x)
 #define DPFROMREG(dp, x)	DIFROMREG((dp).bits, x)
 #define DPTOREG(dp, x)	DITOREG((dp).bits, x)
-
-#define SIFROMHREG(si, x)	((si) = (int)(ctx->fpr[x] >> 32))
-#define SITOHREG(si, x)		(ctx->fpr[x] = \
-				ctx->fpr[x] << 32 >> 32 | (u64)(si) << 32)
 
 /*
  * Emulate the single floating point instruction pointed at by EPC.
@@ -1057,21 +1052,6 @@ static int cop1Emulate(struct pt_regs *xcp, struct mips_fpu_struct *ctx,
 		case dmtc_op:
 			/* copregister fs <- rt */
 			DITOREG(xcp->regs[MIPSInst_RT(ir)], MIPSInst_RD(ir));
-			break;
-#endif
-
-#ifdef CONFIG_CPU_MIPSR2
-		case mfhc_op:
-			/* copregister rd -> gpr[rt] */
-			if (MIPSInst_RT(ir) != 0) {
-				SIFROMHREG(xcp->regs[MIPSInst_RT(ir)],
-					MIPSInst_RD(ir));
-			}
-			break;
-
-		case mthc_op:
-			/* copregister rd <- gpr[rt] */
-			SITOHREG(xcp->regs[MIPSInst_RT(ir)], MIPSInst_RD(ir));
 			break;
 #endif
 
@@ -2022,6 +2002,35 @@ static int fpu_emu(struct pt_regs *xcp, struct mips_fpu_struct *ctx,
 	return 0;
 }
 
+/*
+ * Emulate FPU instructions.
+ *
+ * If we use FPU hardware, then we have been typically called to handle
+ * an unimplemented operation, such as where an operand is a NaN or
+ * denormalized.  In that case exit the emulation loop after a single
+ * iteration so as to let hardware execute any subsequent instructions.
+ *
+ * If we have no FPU hardware or it has been disabled, then continue
+ * emulating floating-point instructions until one of these conditions
+ * has occurred:
+ *
+ * - a non-FPU instruction has been encountered,
+ *
+ * - an attempt to emulate has ended with a signal,
+ *
+ * - the ISA mode has been switched.
+ *
+ * We need to terminate the emulation loop if we got switched to the
+ * MIPS16 mode, whether supported or not, so that we do not attempt
+ * to emulate a MIPS16 instruction as a regular MIPS FPU instruction.
+ * Similarly if we got switched to the microMIPS mode and only the
+ * regular MIPS mode is supported, so that we do not attempt to emulate
+ * a microMIPS instruction as a regular MIPS FPU instruction.  Or if
+ * we got switched to the regular MIPS mode and only the microMIPS mode
+ * is supported, so that we do not attempt to emulate a regular MIPS
+ * instruction that should cause an Address Error exception instead.
+ * For simplicity we always terminate upon an ISA mode switch.
+ */
 int fpu_emulator_cop1Handler(struct pt_regs *xcp, struct mips_fpu_struct *ctx,
 	int has_fpu, void *__user *fault_addr)
 {
@@ -2112,6 +2121,15 @@ int fpu_emulator_cop1Handler(struct pt_regs *xcp, struct mips_fpu_struct *ctx,
 		if (has_fpu)
 			break;
 		if (sig)
+			break;
+		/*
+		 * We have to check for the ISA bit explicitly here,
+		 * because `get_isa16_mode' may return 0 if support
+		 * for code compression has been globally disabled,
+		 * or otherwise we may produce the wrong signal or
+		 * even proceed successfully where we must not.
+		 */
+		if ((xcp->cp0_epc ^ prevepc) & 0x1)
 			break;
 
 		cond_resched();

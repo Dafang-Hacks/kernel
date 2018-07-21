@@ -58,6 +58,12 @@ static int sp_stopping;
 
 extern void *vpe_get_shared(int index);
 
+static void rtlx_dispatch(void)
+{
+	do_IRQ(MIPS_CPU_IRQ_BASE + MIPS_CPU_RTLX_IRQ);
+}
+
+
 /* Interrupt handler may be called before rtlx_init has otherwise had
    a chance to run.
 */
@@ -431,6 +437,7 @@ static ssize_t file_write(struct file *file, const char __user * buffer,
 			  size_t count, loff_t * ppos)
 {
 	int minor = iminor(file_inode(file));
+	struct rtlx_channel *rt = &rtlx->channel[minor];
 
 	/* any space left... */
 	if (!rtlx_write_poll(minor)) {
@@ -459,13 +466,20 @@ static const struct file_operations rtlx_fops = {
 	.llseek =  noop_llseek,
 };
 
+static struct irqaction rtlx_irq = {
+	.handler	= rtlx_interrupt,
+	.name		= "RTLX",
+};
+
+static int rtlx_irq_num = MIPS_CPU_IRQ_BASE + MIPS_CPU_RTLX_IRQ;
+
 static char register_chrdev_failed[] __initdata =
 	KERN_ERR "rtlx_module_init: unable to register device\n";
 
 static int __init rtlx_module_init(void)
 {
 	struct device *dev;
-	int i, err, irq;
+	int i, err;
 
 	if (!cpu_has_mipsmt) {
 		printk("VPE loader: not a MIPS MT capable processor\n");
@@ -505,17 +519,18 @@ static int __init rtlx_module_init(void)
 	notify.start = starting;
 	notify.stop = stopping;
 	vpe_notify(tclimit, &notify);
-	irq = arch_get_xcpu_irq();
-	if (irq < 0) {
+
+	if (cpu_has_vint)
+		set_vi_handler(MIPS_CPU_RTLX_IRQ, rtlx_dispatch);
+	else {
 		pr_err("APRP RTLX init on non-vectored-interrupt processor\n");
 		err = -ENODEV;
 		goto out_chrdev;
 	}
 
-	err = request_irq(irq, &rtlx_interrupt, IRQF_SHARED,
-		module_name, (void *)dev);
-	if (err)
-		goto out_chrdev;
+	rtlx_irq.dev_id = rtlx;
+	setup_irq(rtlx_irq_num, &rtlx_irq);
+
 	return 0;
 
 out_chrdev:

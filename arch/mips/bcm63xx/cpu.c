@@ -115,9 +115,7 @@ unsigned int bcm63xx_get_memory_size(void)
 
 static unsigned int detect_cpu_clock(void)
 {
-	u16 cpu_id = bcm63xx_get_cpu_id();
-
-	switch (cpu_id) {
+	switch (bcm63xx_get_cpu_id()) {
 	case BCM6328_CPU_ID:
 	{
 		unsigned int tmp, mips_pll_fcvo;
@@ -240,7 +238,7 @@ static unsigned int detect_cpu_clock(void)
 	}
 
 	default:
-		panic("Failed to detect clock for CPU with id=%04d\n", cpu_id);
+		BUG();
 	}
 }
 

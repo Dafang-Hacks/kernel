@@ -20,7 +20,6 @@
 #include <asm/cacheflush.h>
 #include <linux/fdtable.h>
 #include <linux/file.h>
-#include <linux/freezer.h>
 #include <linux/fs.h>
 #include <linux/list.h>
 #include <linux/miscdevice.h>
@@ -37,7 +36,6 @@
 #include <linux/vmalloc.h>
 #include <linux/slab.h>
 #include <linux/pid_namespace.h>
-#include <linux/security.h>
 
 #include "binder.h"
 #include "binder_trace.h"
@@ -1384,10 +1382,6 @@ static void binder_transaction(struct binder_proc *proc,
 			return_error = BR_DEAD_REPLY;
 			goto err_dead_binder;
 		}
-		if (security_binder_transaction(proc->tsk, target_proc->tsk) < 0) {
-			return_error = BR_FAILED_REPLY;
-			goto err_invalid_target_handle;
-		}
 		if (!(tr->flags & TF_ONE_WAY) && thread->transaction_stack) {
 			struct binder_transaction *tmp;
 			tmp = thread->transaction_stack;
@@ -1530,10 +1524,6 @@ static void binder_transaction(struct binder_proc *proc,
 					fp->cookie, node->cookie);
 				goto err_binder_get_ref_for_node_failed;
 			}
-			if (security_binder_transfer_binder(proc->tsk, target_proc->tsk)) {
-				return_error = BR_FAILED_REPLY;
-				goto err_binder_get_ref_for_node_failed;
-			}
 			ref = binder_get_ref_for_node(target_proc, node);
 			if (ref == NULL) {
 				return_error = BR_FAILED_REPLY;
@@ -1560,10 +1550,6 @@ static void binder_transaction(struct binder_proc *proc,
 				binder_user_error("%d:%d got transaction with invalid handle, %ld\n",
 						proc->pid,
 						thread->pid, fp->handle);
-				return_error = BR_FAILED_REPLY;
-				goto err_binder_get_ref_failed;
-			}
-			if (security_binder_transfer_binder(proc->tsk, target_proc->tsk)) {
 				return_error = BR_FAILED_REPLY;
 				goto err_binder_get_ref_failed;
 			}
@@ -1622,11 +1608,6 @@ static void binder_transaction(struct binder_proc *proc,
 					proc->pid, thread->pid, fp->handle);
 				return_error = BR_FAILED_REPLY;
 				goto err_fget_failed;
-			}
-			if (security_binder_transfer_file(proc->tsk, target_proc->tsk, file) < 0) {
-				fput(file);
-				return_error = BR_FAILED_REPLY;
-				goto err_get_unused_fd_failed;
 			}
 			target_fd = task_get_unused_fd_flags(target_proc, O_CLOEXEC);
 			if (target_fd < 0) {
@@ -2159,13 +2140,13 @@ retry:
 			if (!binder_has_proc_work(proc, thread))
 				ret = -EAGAIN;
 		} else
-			ret = wait_event_freezable_exclusive(proc->wait, binder_has_proc_work(proc, thread));
+			ret = wait_event_interruptible_exclusive(proc->wait, binder_has_proc_work(proc, thread));
 	} else {
 		if (non_block) {
 			if (!binder_has_thread_work(thread))
 				ret = -EAGAIN;
 		} else
-			ret = wait_event_freezable(thread->wait, binder_has_thread_work(thread));
+			ret = wait_event_interruptible(thread->wait, binder_has_thread_work(thread));
 	}
 
 	binder_lock(__func__);
@@ -2644,9 +2625,6 @@ static long binder_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 			ret = -EBUSY;
 			goto err;
 		}
-		ret = security_binder_set_context_mgr(proc->tsk);
-		if (ret < 0)
-			goto err;
 		if (uid_valid(binder_context_mgr_uid)) {
 			if (!uid_eq(binder_context_mgr_uid, current->cred->euid)) {
 				pr_err("BINDER_SET_CONTEXT_MGR bad uid %d != %d\n",
@@ -2924,7 +2902,7 @@ static int binder_node_release(struct binder_node *node, int refs)
 		refs++;
 
 		if (!ref->death)
-			goto out;
+			continue;
 
 		death++;
 
@@ -2937,7 +2915,6 @@ static int binder_node_release(struct binder_node *node, int refs)
 			BUG();
 	}
 
-out:
 	binder_debug(BINDER_DEBUG_DEAD_BINDER,
 		     "node %d now dead, refs %d, death %d\n",
 		     node->debug_id, refs, death);

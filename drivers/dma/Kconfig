@@ -88,14 +88,6 @@ config DW_DMAC
 	  Support the Synopsys DesignWare AHB DMA controller.  This
 	  can be integrated in chips such as the Atmel AT32ap7000.
 
-config XBURST_DMAC
-        tristate "XBURST DMA V12 support"
-        depends on SOC_4770 || SOC_4780 || SOC_4775 || SOC_M200 || SOC_T15 || SOC_T10 || SOC_T20
-        select DMA_ENGINE
-        help
-          Support the XBURST DMA controller. This support the
-          jz4770 || jz4780 || jz4775 || jz m200 || jz t15 || jz t10 || jz t20 chip.
-
 config DW_DMAC_BIG_ENDIAN_IO
 	bool "Use big endian I/O register access"
 	default y if AVR32
@@ -341,6 +333,7 @@ config NET_DMA
 	bool "Network: TCP receive copy offload"
 	depends on DMA_ENGINE && NET
 	default (INTEL_IOATDMA || FSL_DMA)
+	depends on BROKEN
 	help
 	  This enables the use of DMA engines in the network stack to
 	  offload receive copy-to-user operations, freeing CPU cycles.

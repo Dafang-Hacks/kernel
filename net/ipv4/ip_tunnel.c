@@ -166,6 +166,7 @@ struct ip_tunnel *ip_tunnel_lookup(struct ip_tunnel_net *itn,
 
 	hlist_for_each_entry_rcu(t, head, hash_node) {
 		if (remote != t->parms.iph.daddr ||
+		    t->parms.iph.saddr != 0 ||
 		    !(t->dev->flags & IFF_UP))
 			continue;
 
@@ -182,10 +183,11 @@ struct ip_tunnel *ip_tunnel_lookup(struct ip_tunnel_net *itn,
 	head = &itn->tunnels[hash];
 
 	hlist_for_each_entry_rcu(t, head, hash_node) {
-		if ((local != t->parms.iph.saddr &&
-		     (local != t->parms.iph.daddr ||
-		      !ipv4_is_multicast(local))) ||
-		    !(t->dev->flags & IFF_UP))
+		if ((local != t->parms.iph.saddr || t->parms.iph.daddr != 0) &&
+		    (local != t->parms.iph.daddr || !ipv4_is_multicast(local)))
+			continue;
+
+		if (!(t->dev->flags & IFF_UP))
 			continue;
 
 		if (!ip_tunnel_key_match(&t->parms, flags, key))
@@ -202,6 +204,8 @@ struct ip_tunnel *ip_tunnel_lookup(struct ip_tunnel_net *itn,
 
 	hlist_for_each_entry_rcu(t, head, hash_node) {
 		if (t->parms.i_key != key ||
+		    t->parms.iph.saddr != 0 ||
+		    t->parms.iph.daddr != 0 ||
 		    !(t->dev->flags & IFF_UP))
 			continue;
 
@@ -402,7 +406,7 @@ static struct ip_tunnel *ip_tunnel_create(struct net *net,
 }
 
 int ip_tunnel_rcv(struct ip_tunnel *tunnel, struct sk_buff *skb,
-		  const struct tnl_ptk_info *tpi, bool log_ecn_error)
+		  const struct tnl_ptk_info *tpi, int hdr_len, bool log_ecn_error)
 {
 	struct pcpu_tstats *tstats;
 	const struct iphdr *iph = ip_hdr(skb);
@@ -413,7 +417,7 @@ int ip_tunnel_rcv(struct ip_tunnel *tunnel, struct sk_buff *skb,
 	skb->protocol = tpi->proto;
 
 	skb->mac_header = skb->network_header;
-	__pskb_pull(skb, tunnel->hlen);
+	__pskb_pull(skb, hdr_len);
 	skb_postpull_rcsum(skb, skb_transport_header(skb), tunnel->hlen);
 #ifdef CONFIG_NET_IPGRE_BROADCAST
 	if (ipv4_is_multicast(iph->daddr)) {
@@ -636,6 +640,7 @@ void ip_tunnel_xmit(struct sk_buff *skb, struct net_device *dev,
 				tunnel->err_time + IPTUNNEL_ERR_TIMEO)) {
 			tunnel->err_count--;
 
+			memset(IPCB(skb), 0, sizeof(*IPCB(skb)));
 			dst_link_failure(skb);
 		} else
 			tunnel->err_count = 0;
@@ -659,13 +664,13 @@ void ip_tunnel_xmit(struct sk_buff *skb, struct net_device *dev,
 
 	max_headroom = LL_RESERVED_SPACE(tdev) + sizeof(struct iphdr)
 					       + rt->dst.header_len;
-	if (max_headroom > dev->needed_headroom) {
+	if (max_headroom > dev->needed_headroom)
 		dev->needed_headroom = max_headroom;
-		if (skb_cow_head(skb, dev->needed_headroom)) {
-			dev->stats.tx_dropped++;
-			dev_kfree_skb(skb);
-			return;
-		}
+
+	if (skb_cow_head(skb, dev->needed_headroom)) {
+		dev->stats.tx_dropped++;
+		dev_kfree_skb(skb);
+		return;
 	}
 
 	skb_dst_drop(skb);
@@ -686,7 +691,7 @@ void ip_tunnel_xmit(struct sk_buff *skb, struct net_device *dev,
 	iph->daddr	=	fl4.daddr;
 	iph->saddr	=	fl4.saddr;
 	iph->ttl	=	ttl;
-	__ip_select_ident(iph, &rt->dst, (skb_shinfo(skb)->gso_segs ?: 1) - 1);
+	__ip_select_ident(iph, skb_shinfo(skb)->gso_segs ?: 1);
 
 	iptunnel_xmit(skb, dev);
 	return;

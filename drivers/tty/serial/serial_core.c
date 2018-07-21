@@ -56,16 +56,6 @@ static struct lock_class_key port_lock_key;
 #define uart_console(port)	(0)
 #endif
 
-//#define BT_BLUEDROID_SUPPORT
-
-//Add policy for broadcom bluetooth bluesleep by android4.3 begin
-#ifdef CONFIG_BT_BLUEDROID_SUPPORT
-extern void bluesleep_outgoing_data(void);
-extern void bluesleep_uart_open(struct uart_port *uport);
-extern void bluesleep_uart_close(struct uart_port *uport);
-extern int 	bluesleep_tty_strcmp(const char*);
-#endif
-//Add policy for broadcom bluetooth bluesleep by android4.3 end
 static void uart_change_speed(struct tty_struct *tty, struct uart_state *state,
 					struct ktermios *old_termios);
 static void uart_wait_until_sent(struct tty_struct *tty, int timeout);
@@ -104,9 +94,6 @@ static void __uart_start(struct tty_struct *tty)
 {
 	struct uart_state *state = tty->driver_data;
 	struct uart_port *port = state->uart_port;
-
-	if (port->ops->wake_peer)
-		port->ops->wake_peer(port);
 
 	if (!uart_circ_empty(&state->xmit) && state->xmit.buf &&
 	    !tty->stopped && !tty->hw_stopped)
@@ -254,6 +241,9 @@ static void uart_shutdown(struct tty_struct *tty, struct uart_state *state)
 		/*
 		 * Turn off DTR and RTS early.
 		 */
+		if (uart_console(uport) && tty)
+			uport->cons->cflag = tty->termios.c_cflag;
+
 		if (!tty || (tty->termios.c_cflag & HUPCL))
 			uart_clear_mctrl(uport, TIOCM_DTR | TIOCM_RTS);
 
@@ -369,7 +359,7 @@ uart_get_baud_rate(struct uart_port *port, struct ktermios *termios,
 		 * The spd_hi, spd_vhi, spd_shi, spd_warp kludge...
 		 * Die! Die! Die!
 		 */
-		if (baud == 38400)
+		if (try == 0 && baud == 38400)
 			baud = altbaud;
 
 		/*
@@ -524,12 +514,6 @@ static int uart_write(struct tty_struct *tty,
 		return -EL3HLT;
 	}
 
-//Add policy for broadcom bluetooth bluesleep by android4.3 begin
-#ifdef CONFIG_BT_BLUEDROID_SUPPORT
-	if(!bluesleep_tty_strcmp(tty->name))
-		bluesleep_outgoing_data();
-#endif
-//Add policy for broadcom bluetooth bluesleep by android4.3 end
 	port = state->uart_port;
 	circ = &state->xmit;
 
@@ -1346,13 +1330,6 @@ static void uart_close(struct tty_struct *tty, struct file *filp)
 
 	pr_debug("uart_close(%d) called\n", uport->line);
 
-//Add policy for broadcom bluetooth bluesleep by android4.3 begin
-#ifdef CONFIG_BT_BLUEDROID_SUPPORT
-	if(!bluesleep_tty_strcmp(tty->name))
-		bluesleep_uart_close(state->uart_port);
-#endif
-//Add policy for broadcom bluetooth bluesleep by android4.3 end
-
 	if (tty_port_close_start(port, tty, filp) == 0)
 		return;
 
@@ -1619,14 +1596,6 @@ static int uart_open(struct tty_struct *tty, struct file *filp)
 	if (retval == 0)
 		retval = tty_port_block_til_ready(port, tty, filp);
 
-//Add policy for broadcom bluetooth bluesleep by android4.3 begin
-#ifdef CONFIG_BT_BLUEDROID_SUPPORT
-	if(!bluesleep_tty_strcmp(tty->name)){
-		bluesleep_uart_open(state->uart_port);
-	}
-#endif
-//Add policy for broadcom bluetooth bluesleep by android4.3 end
-//
 end:
 	return retval;
 err_dec_count:

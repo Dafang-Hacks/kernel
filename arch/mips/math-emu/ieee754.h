@@ -311,10 +311,7 @@ struct _ieee754_csr {
 	unsigned pad0:7;
 	unsigned nod:1;		/* set 1 for no denormalised numbers */
 	unsigned c:1;		/* condition */
-	unsigned pad1a:2;
-	unsigned mac2008:1;
-	unsigned abs2008:1;
-	unsigned nan2008:1;
+	unsigned pad1:5;
 	unsigned cx:6;		/* exceptions this operation */
 	unsigned mx:5;		/* exception enable  mask */
 	unsigned sx:5;		/* exceptions total */
@@ -325,10 +322,7 @@ struct _ieee754_csr {
 	unsigned sx:5;		/* exceptions total */
 	unsigned mx:5;		/* exception enable  mask */
 	unsigned cx:6;		/* exceptions this operation */
-	unsigned nan2008:1;
-	unsigned abs2008:1;
-	unsigned mac2008:1;
-	unsigned pad1a:2;
+	unsigned pad1:5;
 	unsigned c:1;		/* condition */
 	unsigned nod:1;		/* set 1 for no denormalised numbers */
 	unsigned pad0:7;

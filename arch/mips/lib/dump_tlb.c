@@ -1,13 +1,8 @@
 /*
- * This file is subject to the terms and conditions of the GNU General Public
- * License.  See the file "COPYING" in the main directory of this archive
- * for more details.
+ * Dump R4x00 TLB for debugging purposes.
  *
  * Copyright (C) 1994, 1995 by Waldorf Electronics, written by Ralf Baechle.
  * Copyright (C) 1999 by Silicon Graphics, Inc.
- * Copyright (C) 2011 MIPS Technologies, Inc.
- *
- * Dump R4x00 TLB for debugging purposes.
  */
 #include <linux/kernel.h>
 #include <linux/mm.h>
@@ -64,10 +59,8 @@ static void dump_tlb(int first, int last)
 
 	for (i = first; i <= last; i++) {
 		write_c0_index(i);
-		back_to_back_c0_hazard();
 		BARRIER();
 		tlb_read();
-		back_to_back_c0_hazard();
 		BARRIER();
 		pagemask = read_c0_pagemask();
 		entryhi	 = read_c0_entryhi();
@@ -75,8 +68,8 @@ static void dump_tlb(int first, int last)
 		entrylo1 = read_c0_entrylo1();
 
 		/* Unused entries have a virtual address of CKSEG0.  */
-		if (((entryhi & ~0x1ffffUL) != CKSEG0) &&
-		    !(cpu_has_tlbinv && (entryhi & MIPS_EHINV))) {
+		if ((entryhi & ~0x1ffffUL) != CKSEG0
+		    && (entryhi & 0xff) == asid) {
 #ifdef CONFIG_32BIT
 			int width = 8;
 #else
@@ -90,7 +83,7 @@ static void dump_tlb(int first, int last)
 			c0 = (entrylo0 >> 3) & 7;
 			c1 = (entrylo1 >> 3) & 7;
 
-			printk("va=%0*lx asid=%02lx:",
+			printk("va=%0*lx asid=%02lx\n",
 			       width, (entryhi & ~0x1fffUL),
 			       entryhi & 0xff);
 			printk("\t[pa=%0*llx c=%d d=%d v=%d g=%d] ",
@@ -112,8 +105,6 @@ static void dump_tlb(int first, int last)
 	write_c0_entryhi(s_entryhi);
 	write_c0_index(s_index);
 	write_c0_pagemask(s_pagemask);
-	BARRIER();
-	back_to_back_c0_hazard();
 }
 
 void dump_tlb_all(void)

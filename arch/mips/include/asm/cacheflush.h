@@ -66,20 +66,20 @@ static inline void flush_icache_page(struct vm_area_struct *vma,
 extern void (*flush_icache_range)(unsigned long start, unsigned long end);
 extern void (*local_flush_icache_range)(unsigned long start, unsigned long end);
 
-extern void (*__flush_cache_vmap)(unsigned long start, unsigned long end);
+extern void (*__flush_cache_vmap)(void);
 
 static inline void flush_cache_vmap(unsigned long start, unsigned long end)
 {
 	if (cpu_has_dc_aliases)
-		__flush_cache_vmap(start,end);
+		__flush_cache_vmap();
 }
 
-extern void (*__flush_cache_vunmap)(unsigned long start, unsigned long end);
+extern void (*__flush_cache_vunmap)(void);
 
 static inline void flush_cache_vunmap(unsigned long start, unsigned long end)
 {
 	if (cpu_has_dc_aliases)
-		__flush_cache_vunmap(start,end);
+		__flush_cache_vunmap();
 }
 
 extern void copy_to_user_page(struct vm_area_struct *vma,
@@ -94,8 +94,6 @@ extern void (*flush_cache_sigtramp)(unsigned long addr);
 extern void (*flush_icache_all)(void);
 extern void (*local_flush_data_cache_page)(void * addr);
 extern void (*flush_data_cache_page)(unsigned long addr);
-extern void (*mips_flush_data_cache_range)(struct vm_area_struct *vma,
-	struct page *page, unsigned long addr, unsigned long size);
 
 /*
  * This flag is used to indicate that the page pointed to by a pte
@@ -119,8 +117,7 @@ extern void kunmap_coherent(void);
 #define ARCH_HAS_FLUSH_KERNEL_DCACHE_PAGE
 static inline void flush_kernel_dcache_page(struct page *page)
 {
-	if (cpu_has_dc_aliases || !cpu_has_ic_fills_f_dc)
-		__flush_dcache_page(page);
+	BUG_ON(cpu_has_dc_aliases && PageHighMem(page));
 }
 
 /*

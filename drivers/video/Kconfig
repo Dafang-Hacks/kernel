@@ -23,10 +23,6 @@ source "drivers/gpu/drm/Kconfig"
 
 source "drivers/gpu/host1x/Kconfig"
 
-source "drivers/gpu/vivante/Kconfig"
-
-source "drivers/video/jz_ipu/Kconfig"
-
 config VGASTATE
        tristate
        default n
@@ -2479,7 +2475,6 @@ source "drivers/video/omap2/Kconfig"
 source "drivers/video/exynos/Kconfig"
 source "drivers/video/mmp/Kconfig"
 source "drivers/video/backlight/Kconfig"
-source "drivers/video/adf/Kconfig"
 
 if VT
 	source "drivers/video/console/Kconfig"
@@ -2516,35 +2511,4 @@ config FB_SSD1307
 	  This driver implements support for the Solomon SSD1307
 	  OLED controller over I2C.
 
-source "drivers/video/jz_fb_v12/Kconfig"
-config FB_VSYNC_SKIP
-        int "Vsync skip ratio[0..9]"
-        depends on FB
-        default 9
-        help
-          Vsync skip ratio
-
-choice
-	depends on FB && (SOC_4780 || SOC_4775 || SOC_M200)
-	prompt "allocation frame buffer"
-	default THREE_FRAME_BUFFERS
-
-config ONE_FRAME_BUFFERS
-       bool "alloc 1 frame buffers"
-       help
-	one frame buffer
-
-config TWO_FRAME_BUFFERS
-       bool "alloc 2 frame buffers"
-       help
-	double frame buffer
-
-config THREE_FRAME_BUFFERS
-       bool "alloc 3 frame buffers"
-       help
-	treble frame buffer
-endchoice
-
-source "drivers/video/jz_vpu/Kconfig"
-source "drivers/video/soc_vpu/Kconfig"
 endmenu

@@ -12,7 +12,6 @@ fb-y                              := fbmem.o fbmon.o fbcmap.o fbsysfs.o \
                                      modedb.o fbcvt.o
 fb-objs                           := $(fb-y)
 
-obj-$(CONFIG_ADF)		  += adf/
 obj-$(CONFIG_VT)		  += console/
 obj-$(CONFIG_LOGO)		  += logo/
 obj-y				  += backlight/
@@ -168,10 +167,6 @@ obj-$(CONFIG_FB_DA8XX)		  += da8xx-fb.o
 obj-$(CONFIG_FB_MXS)		  += mxsfb.o
 obj-$(CONFIG_FB_SSD1307)	  += ssd1307fb.o
 obj-$(CONFIG_FB_SIMPLE)           += simplefb.o
-obj-$(CONFIG_FB_JZ_V12)     	  += jz_fb_v12/
-obj-$(CONFIG_JZ_VPU)             += jz_vpu/
-obj-$(CONFIG_JZ_IPU)		  += jz_ipu/
-obj-$(CONFIG_SOC_VPU)          += soc_vpu/
 
 # the test framebuffer is last
 obj-$(CONFIG_FB_VIRTUAL)          += vfb.o

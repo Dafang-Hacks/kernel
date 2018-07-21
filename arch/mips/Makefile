@@ -62,7 +62,7 @@ ld-emul			= $(32bit-emul)
 vmlinux-32		= vmlinux
 vmlinux-64		= vmlinux.64
 
-cflags-y		+= -mabi=32 -mgp32 -mfp32
+cflags-y		+= -mabi=32
 endif
 
 ifdef CONFIG_64BIT
@@ -88,7 +88,7 @@ all-$(CONFIG_SYS_SUPPORTS_ZBOOT)+= vmlinuz
 # crossformat linking we rely on the elf2ecoff tool for format conversion.
 #
 cflags-y			+= -G 0 -mno-abicalls -fno-pic -pipe
-cflags-y			+= -msoft-float -Wa,-mhard-float
+cflags-y			+= -msoft-float
 LDFLAGS_vmlinux			+= -G 0 -static -n -nostdlib
 KBUILD_AFLAGS_MODULE		+= -mlong-calls
 KBUILD_CFLAGS_MODULE		+= -mlong-calls
@@ -176,8 +176,6 @@ libs-$(CONFIG_FW_ARC)		+= arch/mips/fw/arc/
 libs-$(CONFIG_FW_CFE)		+= arch/mips/fw/cfe/
 libs-$(CONFIG_FW_SNIPROM)	+= arch/mips/fw/sni/
 libs-y				+= arch/mips/fw/lib/
-libs-$(CONFIG_NAND)		+= arch/mips/xburst/lib/nand/
-libs-$(CONFIG_NAND)		+= arch/mips/xburst/lib/ndd/
 
 #
 # Kernel compression
@@ -196,8 +194,6 @@ include $(srctree)/arch/mips/Kbuild.platforms
 ifdef CONFIG_PHYSICAL_START
 load-y					= $(CONFIG_PHYSICAL_START)
 endif
-entry-y				= 0x$(shell $(NM) vmlinux 2>/dev/null \
-					| grep "\bkernel_entry\b" | cut -f1 -d \ )
 
 cflags-y			+= -I$(srctree)/arch/mips/include/asm/mach-generic
 drivers-$(CONFIG_PCI)		+= arch/mips/pci/
@@ -229,9 +225,6 @@ KBUILD_CFLAGS	+= $(cflags-y)
 KBUILD_CPPFLAGS += -DVMLINUX_LOAD_ADDRESS=$(load-y)
 KBUILD_CPPFLAGS += -DDATAOFFSET=$(if $(dataoffset-y),$(dataoffset-y),0)
 
-bootvars-y	= VMLINUX_LOAD_ADDRESS=$(load-y) \
-		  VMLINUX_ENTRY_ADDRESS=$(entry-y)
-
 LDFLAGS			+= -m $(ld-emul)
 
 ifdef CONFIG_MIPS
@@ -257,26 +250,9 @@ drivers-$(CONFIG_OPROFILE)	+= arch/mips/oprofile/
 # suspend and hibernation support
 drivers-$(CONFIG_PM)	+= arch/mips/power/
 
-# boot image targets (arch/mips/boot/)
-boot-y			:= vmlinux.bin
-boot-y			+= vmlinux.ecoff
-boot-y			+= vmlinux.srec
-ifeq ($(shell expr $(load-y) \< 0xffffffff80000000 2> /dev/null), 0)
-boot-y			+= uImage
-boot-y			+= uImage.gzip
-boot-y			+= uImage.lzma
-endif
-
-# compressed boot image targets (arch/mips/boot/compressed/)
-bootz-y			:= vmlinuz
-bootz-y			+= vmlinuz.bin
-bootz-y			+= vmlinuz.ecoff
-bootz-y			+= vmlinuz.srec
-
 ifdef CONFIG_LASAT
 rom.bin rom.sw: vmlinux
-	$(Q)$(MAKE) $(build)=arch/mips/lasat/image \
-		$(bootvars-y) $@
+	$(Q)$(MAKE) $(build)=arch/mips/lasat/image $@
 endif
 
 #
@@ -300,20 +276,13 @@ vmlinux.64: vmlinux
 all:	$(all-y)
 
 # boot
-$(boot-y): $(vmlinux-32) FORCE
-	$(Q)$(MAKE) $(build)=arch/mips/boot VMLINUX=$(vmlinux-32) \
-		$(bootvars-y) arch/mips/boot/$@
-
-# zImage
-zImage: $(vmlinux-32) FORCE
-	$(Q)$(MAKE) $(build)=arch/mips/boot/zcompressed VMLINUX=$(vmlinux-32) $@
-	@cp arch/mips/boot/zcompressed/$@ arch/mips/boot/compressed/$@ 
-	@echo '  Kernel: arch/mips/boot/compressed/$@ is ready'
+vmlinux.bin vmlinux.ecoff vmlinux.srec: $(vmlinux-32) FORCE
+	$(Q)$(MAKE) $(build)=arch/mips/boot VMLINUX=$(vmlinux-32) arch/mips/boot/$@
 
 # boot/compressed
-$(bootz-y): $(vmlinux-32) FORCE
+vmlinuz vmlinuz.bin vmlinuz.ecoff vmlinuz.srec: $(vmlinux-32) FORCE
 	$(Q)$(MAKE) $(build)=arch/mips/boot/compressed \
-		$(bootvars-y) 32bit-bfd=$(32bit-bfd) $@
+	   VMLINUX_LOAD_ADDRESS=$(load-y) 32bit-bfd=$(32bit-bfd) $@
 
 
 CLEAN_FILES += vmlinux.32 vmlinux.64
@@ -350,8 +319,6 @@ define archhelp
 	echo '  vmlinuz.ecoff        - ECOFF zboot image'
 	echo '  vmlinuz.bin          - Raw binary zboot image'
 	echo '  vmlinuz.srec         - SREC zboot image'
-	echo '  uImage               - U-Boot image'
-	echo '  uImage.gz            - U-Boot image (gzip)'
 	echo
 	echo '  These will be default as appropriate for a configured platform.'
 endef

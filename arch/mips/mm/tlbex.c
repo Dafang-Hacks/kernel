@@ -520,7 +520,6 @@ static void __cpuinit build_tlb_write_entry(u32 **p, struct uasm_label **l,
 		switch (current_cpu_type()) {
 		case CPU_M14KC:
 		case CPU_74K:
-		case CPU_PROAPTIV:
 			break;
 
 		default:
@@ -974,17 +973,9 @@ build_get_pgde32(u32 **p, unsigned int tmp, unsigned int ptr)
 #endif
 	uasm_i_mfc0(p, tmp, C0_BADVADDR); /* get faulting address */
 	uasm_i_lw(p, ptr, uasm_rel_lo(pgdc), ptr);
-
-	if (cpu_has_mips32r2) {
-		uasm_i_ext(p, tmp, tmp, PGDIR_SHIFT, (32 - PGDIR_SHIFT));
-		uasm_i_ins(p, ptr, tmp, PGD_T_LOG2, (32 - PGDIR_SHIFT));
-		return;
-	}
-
 	uasm_i_srl(p, tmp, tmp, PGDIR_SHIFT); /* get pgd only bits */
 	uasm_i_sll(p, tmp, tmp, PGD_T_LOG2);
 	uasm_i_addu(p, ptr, ptr, tmp); /* add in pgd offset */
-
 }
 
 #endif /* !CONFIG_64BIT */
@@ -1017,17 +1008,6 @@ static void __cpuinit build_adjust_context(u32 **p, unsigned int ctx)
 
 static void __cpuinit build_get_ptep(u32 **p, unsigned int tmp, unsigned int ptr)
 {
-#ifndef CONFIG_64BIT
-	if (cpu_has_mips_r2) {
-		/* For MIPS32R2, PTE ptr offset is obtained from BadVAddr */
-		UASM_i_MFC0(p, tmp, C0_BADVADDR);
-		UASM_i_LW(p, ptr, 0, ptr);
-		uasm_i_ext(p, tmp, tmp, PAGE_SHIFT+1, PGDIR_SHIFT-PAGE_SHIFT-1);
-		uasm_i_ins(p, ptr, tmp, PTE_T_LOG2+1, PGDIR_SHIFT-PAGE_SHIFT-1);
-		return;
-	}
-#endif /* CONFIG_64BIT */
-
 	/*
 	 * Bug workaround for the Nevada. It seems as if under certain
 	 * circumstances the move from cp0_context might produce a
@@ -1111,6 +1091,7 @@ static void __cpuinit build_update_entries(u32 **p, unsigned int tmp,
 struct mips_huge_tlb_info {
 	int huge_pte;
 	int restore_scratch;
+	bool need_reload_pte;
 };
 
 static struct mips_huge_tlb_info __cpuinit
@@ -1125,6 +1106,7 @@ build_fast_tlb_refill_handler (u32 **p, struct uasm_label **l,
 
 	rv.huge_pte = scratch;
 	rv.restore_scratch = 0;
+	rv.need_reload_pte = false;
 
 	if (check_for_high_segbits) {
 		UASM_i_MFC0(p, tmp, C0_BADVADDR);
@@ -1313,6 +1295,7 @@ static void __cpuinit build_r4000_tlb_refill_handler(void)
 	} else {
 		htlb_info.huge_pte = K0;
 		htlb_info.restore_scratch = 0;
+		htlb_info.need_reload_pte = true;
 		vmalloc_mode = refill_noscratch;
 		/*
 		 * create the plain linear handler
@@ -1349,6 +1332,8 @@ static void __cpuinit build_r4000_tlb_refill_handler(void)
 	}
 #ifdef CONFIG_MIPS_HUGE_TLB_SUPPORT
 	uasm_l_tlb_huge_update(&l, p);
+	if (htlb_info.need_reload_pte)
+		UASM_i_LW(&p, htlb_info.huge_pte, 0, K1);
 	build_huge_update_entries(&p, htlb_info.huge_pte, K1);
 	build_huge_tlb_write_entry(&p, &l, &r, K0, tlb_random,
 				   htlb_info.restore_scratch);
@@ -1955,19 +1940,6 @@ static void __cpuinit build_r4000_tlb_load_handler(void)
 		uasm_i_nop(&p);
 
 		uasm_i_tlbr(&p);
-
-		switch (current_cpu_type()) {
-		default:
-			if (cpu_has_mips_r2) {
-				uasm_i_ehb(&p);
-
-		case CPU_CAVIUM_OCTEON:
-		case CPU_CAVIUM_OCTEON_PLUS:
-		case CPU_CAVIUM_OCTEON2:
-				break;
-			}
-		}
-
 		/* Examine  entrylo 0 or 1 based on ptr. */
 		if (use_bbit_insns()) {
 			uasm_i_bbit0(&p, wr.r2, ilog2(sizeof(pte_t)), 8);
@@ -2022,19 +1994,6 @@ static void __cpuinit build_r4000_tlb_load_handler(void)
 		uasm_i_nop(&p);
 
 		uasm_i_tlbr(&p);
-
-		switch (current_cpu_type()) {
-		default:
-			if (cpu_has_mips_r2) {
-				uasm_i_ehb(&p);
-
-		case CPU_CAVIUM_OCTEON:
-		case CPU_CAVIUM_OCTEON_PLUS:
-		case CPU_CAVIUM_OCTEON2:
-				break;
-			}
-		}
-
 		/* Examine  entrylo 0 or 1 based on ptr. */
 		if (use_bbit_insns()) {
 			uasm_i_bbit0(&p, wr.r2, ilog2(sizeof(pte_t)), 8);

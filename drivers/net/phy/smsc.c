@@ -71,13 +71,12 @@ static int smsc_phy_config_init(struct phy_device *phydev)
 	if (rc < 0)
 		return rc;
 
-#if 0
 	/* Enable energy detect mode for this SMSC Transceivers */
 	rc = phy_write(phydev, MII_LAN83C185_CTRL_STATUS,
 		       rc | MII_LAN83C185_EDPWRDOWN);
 	if (rc < 0)
 		return rc;
-#endif
+
 	return smsc_phy_ack_interrupt (phydev);
 }
 
@@ -106,12 +105,12 @@ static int lan87xx_read_status(struct phy_device *phydev)
 		int rc = phy_read(phydev, MII_LAN83C185_CTRL_STATUS);
 		if (rc < 0)
 			return rc;
-#if 0
+
 		rc = phy_write(phydev, MII_LAN83C185_CTRL_STATUS,
 			       rc & ~MII_LAN83C185_EDPWRDOWN);
 		if (rc < 0)
 			return rc;
-#endif
+
 		/* Sleep 64 ms to allow ~5 link test pulses to be sent */
 		msleep(64);
 
@@ -119,12 +118,11 @@ static int lan87xx_read_status(struct phy_device *phydev)
 		rc = phy_read(phydev, MII_LAN83C185_CTRL_STATUS);
 		if (rc < 0)
 			return rc;
-#if 0
+
 		rc = phy_write(phydev, MII_LAN83C185_CTRL_STATUS,
 			       rc | MII_LAN83C185_EDPWRDOWN);
 		if (rc < 0)
 			return rc;
-#endif
 	}
 
 	return err;

@@ -51,7 +51,7 @@ extern unsigned int vced_count, vcei_count;
  * User space process size: 2GB. This is hardcoded into a few places,
  * so don't change it unless you know what you are doing.
  */
-#define TASK_SIZE	0x7fff8000UL
+#define TASK_SIZE	0x80000000UL
 #endif
 
 #ifdef __KERNEL__
@@ -96,13 +96,9 @@ extern unsigned int vced_count, vcei_count;
 
 
 #define NUM_FPU_REGS	32
-#define NUM_MXU_REGS	16
 
 typedef __u64 fpureg_t;
 
-struct xburst_mxu_struct {
-	unsigned int regs[NUM_MXU_REGS];
-};
 /*
  * It would be nice to add some more fields for emulator statistics, but there
  * are a number of fixed offsets in offset.h and elsewhere that would have to
@@ -195,24 +191,6 @@ struct octeon_cvmseg_state {
 
 #endif
 
-#ifdef CONFIG_MACH_XBURST
-typedef union {
-	u64 val64[2];
-} vpr_t;
-
-struct xburst_cop2_state {
-	u32 mxu_csr;
-	vpr_t vr[32];
-};
-#endif
-
-#ifdef CONFIG_PMON_DEBUG
-struct xburst_perf_cnt {
-	u32 perfctrl;
-	u64 perfcnt;
-};
-#endif
-
 typedef struct {
 	unsigned long seg;
 } mm_segment_t;
@@ -245,16 +223,6 @@ struct thread_struct {
 	/* Saved state of the DSP ASE, if available. */
 	struct mips_dsp_state dsp;
 
-	/* Saved registers of the MXU, if available. */
-	struct xburst_mxu_struct mxu;
-
-	/* for magicode cpuinfo */
-#define CPU_MIPS             0
-#define CPU_ARM              1
-#define CPU_ARM_NEON         2
-	unsigned int mcflags;
-
-
 	/* Saved watch register state, if available. */
 	union mips_watch_reg_state watch;
 
@@ -265,12 +233,6 @@ struct thread_struct {
 #ifdef CONFIG_CPU_CAVIUM_OCTEON
     struct octeon_cop2_state cp2 __attribute__ ((__aligned__(128)));
     struct octeon_cvmseg_state cvmseg __attribute__ ((__aligned__(128)));
-#endif
-#ifdef CONFIG_MACH_XBURST
-	struct xburst_cop2_state cp2;
-#endif
-#ifdef CONFIG_PMON_DEBUG
-	struct xburst_perf_cnt pfc[2];
 #endif
 	struct mips_abi *abi;
 };
@@ -284,21 +246,11 @@ struct thread_struct {
 #endif /* CONFIG_MIPS_MT_FPAFF */
 
 #ifdef CONFIG_CPU_CAVIUM_OCTEON
-#define COP2_INIT						\
+#define OCTEON_INIT						\
 	.cp2			= INIT_OCTEON_COP2,
-#elif defined(CONFIG_MACH_XBURST)
-#define COP2_INIT						\
-	.cp2			= {0},
 #else
-#define COP2_INIT
+#define OCTEON_INIT
 #endif /* CONFIG_CPU_CAVIUM_OCTEON */
-
-#ifdef CONFIG_PMON_DEBUG
-#define PFC_INIT						\
-	.pfc			= {{0, 0}, {0, 0}},
-#else
-#define PFC_INIT
-#endif /* CONFIG_MACH_XBURST */
 
 #define INIT_THREAD  {						\
 	/*							\
@@ -350,8 +302,7 @@ struct thread_struct {
 	/*							\
 	 * Cavium Octeon specifics (null if not Octeon)		\
 	 */							\
-	COP2_INIT						\
-	PFC_INIT						\
+	OCTEON_INIT						\
 }
 
 struct task_struct;

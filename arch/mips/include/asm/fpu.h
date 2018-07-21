@@ -29,15 +29,11 @@ struct sigcontext;
 struct sigcontext32;
 
 extern void fpu_emulator_init_fpu(void);
-extern int _init_fpu(void);
+extern void _init_fpu(void);
 extern void _save_fp(struct task_struct *);
 extern void _restore_fp(struct task_struct *);
 
-/*
- * This macro is used only to obtain FIR from FPU and it seems
- * like a BUG in 34K with single FPU affinity to VPE0.
- */
-#define __enable_fpu()                                                  \
+#define __enable_fpu()							\
 do {									\
 	set_c0_status(ST0_CU1);						\
 	enable_fpu_hazard();						\
@@ -46,7 +42,7 @@ do {									\
 #define __disable_fpu()							\
 do {									\
 	clear_c0_status(ST0_CU1);					\
-        disable_fpu_hazard();						\
+	disable_fpu_hazard();						\
 } while (0)
 
 #define enable_fpu()							\
@@ -74,58 +70,27 @@ static inline int is_fpu_owner(void)
 	return cpu_has_fpu && __is_fpu_owner();
 }
 
-static inline int __own_fpu(void)
+static inline void __own_fpu(void)
 {
-	int ret = 0;
-
-#if defined(CONFIG_CPU_MIPS32_R2) || defined(CONFIG_MIPS64)
-	if (test_thread_flag(TIF_32BIT_REGS)) {
-		change_c0_status(ST0_CU1|ST0_FR,ST0_CU1);
-		KSTK_STATUS(current) |= ST0_CU1;
-		KSTK_STATUS(current) &= ~ST0_FR;
-		enable_fpu_hazard();
-		if (read_c0_status() & ST0_FR)
-		    ret = SIGFPE;
-	} else {
-		set_c0_status(ST0_CU1|ST0_FR);
-		KSTK_STATUS(current) |= ST0_CU1|ST0_FR;
-		enable_fpu_hazard();
-		if (!(read_c0_status() & ST0_FR))
-		    ret = SIGFPE;
-	}
-#else
-	if (!test_thread_flag(TIF_32BIT_REGS))
-		return SIGFPE;  /* core has no 64bit FPU, so ... */
-
-	set_c0_status(ST0_CU1);
+	__enable_fpu();
 	KSTK_STATUS(current) |= ST0_CU1;
-	enable_fpu_hazard();
-#endif
 	set_thread_flag(TIF_USEDFPU);
-	return ret;
 }
 
-static inline int own_fpu_inatomic(int restore)
+static inline void own_fpu_inatomic(int restore)
 {
-	int ret = 0;
-
 	if (cpu_has_fpu && !__is_fpu_owner()) {
-		ret =__own_fpu();
-		if (restore && !ret)
+		__own_fpu();
+		if (restore)
 			_restore_fp(current);
 	}
-	return ret;
 }
 
-static inline int own_fpu(int restore)
+static inline void own_fpu(int restore)
 {
-	int ret;
-
 	preempt_disable();
-	ret = own_fpu_inatomic(restore);
+	own_fpu_inatomic(restore);
 	preempt_enable();
-
-	return ret;
 }
 
 static inline void lose_fpu(int save)
@@ -136,25 +101,21 @@ static inline void lose_fpu(int save)
 			_save_fp(current);
 		KSTK_STATUS(current) &= ~ST0_CU1;
 		clear_thread_flag(TIF_USEDFPU);
-		clear_c0_status(ST0_CU1);
-		disable_fpu_hazard();
+		__disable_fpu();
 	}
 	preempt_enable();
 }
 
-static inline int init_fpu(void)
+static inline void init_fpu(void)
 {
-	int ret = 0;
-
 	preempt_disable();
-	if (cpu_has_fpu && !(ret = __own_fpu()))
+	if (cpu_has_fpu) {
+		__own_fpu();
 		_init_fpu();
-	else
+	} else {
 		fpu_emulator_init_fpu();
-
+	}
 	preempt_enable();
-
-	return ret;
 }
 
 static inline void save_fp(struct task_struct *tsk)

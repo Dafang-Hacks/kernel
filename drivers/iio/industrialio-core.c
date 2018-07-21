@@ -691,35 +691,34 @@ static int iio_device_add_channel_sysfs(struct iio_dev *indio_dev,
 
 	if (chan->channel < 0)
 		return 0;
-
-	ret = __iio_add_chan_devattr(iio_chan_info_postfix[i],
-			chan,
-			&iio_read_channel_info,
-			&iio_write_channel_info,
-			i,
-			0,
-			&indio_dev->dev,
-			&indio_dev->channel_attr_list);
-	if (ret < 0)
-		goto error_ret;
-	attrcount++;
-
-
-	for_each_set_bit(i, &chan->info_mask, sizeof(long)*8) {
-		ret = __iio_add_chan_devattr(iio_chan_info_postfix[i/2],
+	for_each_set_bit(i, &chan->info_mask_separate, sizeof(long)*8) {
+		ret = __iio_add_chan_devattr(iio_chan_info_postfix[i],
 					     chan,
 					     &iio_read_channel_info,
 					     &iio_write_channel_info,
-					     i/2,
-					     !(i%2),
+					     i,
+					     0,
 					     &indio_dev->dev,
 					     &indio_dev->channel_attr_list);
-		if (ret == -EBUSY && (i%2 == 0)) {
-			ret = 0;
-			continue;
-		}
 		if (ret < 0)
 			goto error_ret;
+		attrcount++;
+	}
+	for_each_set_bit(i, &chan->info_mask_shared_by_type, sizeof(long)*8) {
+		ret = __iio_add_chan_devattr(iio_chan_info_postfix[i],
+					     chan,
+					     &iio_read_channel_info,
+					     &iio_write_channel_info,
+					     i,
+					     1,
+					     &indio_dev->dev,
+					     &indio_dev->channel_attr_list);
+		if (ret == -EBUSY) {
+			ret = 0;
+			continue;
+		} else if (ret < 0) {
+			goto error_ret;
+		}
 		attrcount++;
 	}
 

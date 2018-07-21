@@ -52,7 +52,7 @@ NESTED(handle_sys, PT_SIZE, sp)
 
 stack_done:
 	lw	t0, TI_FLAGS($28)	# syscall tracing enabled?
-	li	t1, _TIF_SYSCALL_TRACE | _TIF_SYSCALL_AUDIT
+	li	t1, _TIF_WORK_SYSCALL_ENTRY
 	and	t0, t1
 	bnez	t0, syscall_trace_entry # -> yes
 
@@ -125,39 +125,17 @@ stackargs:
 
 	la	t1, 5f			# load up to 3 arguments
 	subu	t1, t3
-#ifndef CONFIG_EVA
-1:      lw      t5, 16(t0)              # argument #5 from usp
-	.set    push
-	.set    noreorder
+1:	lw	t5, 16(t0)		# argument #5 from usp
+	.set	push
+	.set	noreorder
 	.set	nomacro
 	jr	t1
 	 addiu	t1, 6f - 5f
 
-2:	.insn
-	lw	t8, 28(t0)		# argument #8 from usp
-3:	.insn
-	lw	t7, 24(t0)		# argument #7 from usp
-4:	.insn
-	lw	t6, 20(t0)		# argument #6 from usp
-5:	.insn
-#else
-	.set    eva
-1:      lwe      t5, 16(t0)              # argument #5 from usp
-	.set    push
-	.set    noreorder
-	.set	nomacro
-	jr	t1
-	 addiu	t1, 6f - 5f
-
-2:	.insn
-	lwe      t8, 28(t0)              # argument #8 from usp
-3:	.insn
-	lwe      t7, 24(t0)              # argument #7 from usp
-4:	.insn
-	lwe      t6, 20(t0)              # argument #6 from usp
-5:	.insn
-#endif /* CONFIG_EVA */
-	jr	t1
+2:	lw	t8, 28(t0)		# argument #8 from usp
+3:	lw	t7, 24(t0)		# argument #7 from usp
+4:	lw	t6, 20(t0)		# argument #6 from usp
+5:	jr	t1
 	 sw	t5, 16(sp)		# argument #5 to ksp
 
 #ifdef CONFIG_CPU_MICROMIPS
@@ -172,7 +150,7 @@ stackargs:
 	sw	t7, 24(sp)		# argument #7 to ksp
 	sw	t6, 20(sp)		# argument #6 to ksp
 #endif
-6:      j       stack_done              # go back
+6:	j	stack_done		# go back
 	 nop
 	.set	pop
 
