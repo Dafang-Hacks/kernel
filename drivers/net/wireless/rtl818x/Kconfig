@@ -98,3 +98,9 @@ config RTL8189FS
 	depends on USB
 	---help---
 	  Help message of RTL8189FS
+
+config RTL8188EU
+tristate "Realtek 8188E USB WiFi"
+depends on USB
+---help---
+  Help message of RTL8188EU
