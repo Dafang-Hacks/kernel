@@ -8,4 +8,4 @@ cflags-$(CONFIG_SOC_4780)	+= -I$(srctree)/arch/mips/xburst/soc-4780/include
 cflags-$(CONFIG_SOC_M200)	+= -I$(srctree)/arch/mips/xburst/soc-m200/include
 cflags-$(CONFIG_SOC_T15)	+= -I$(srctree)/arch/mips/xburst/soc-t15/include
 cflags-$(CONFIG_SOC_T10)	+= -I$(srctree)/arch/mips/xburst/soc-t10/include
-cflags-$(CONFIG_SOC_T20)	+= -I$(srctree)/arch/mips/xburst/soc-t20/include
+cflags-$(CONFIG_SOC_T20)	+= -I$(srctree)/arch/mips/include/asm/mach-soc-t20/
