@@ -92,9 +92,9 @@ config RTL8189ES
 	---help---
 	  Help message of RTL8189ES
 
-config RTL8188EU
-	tristate "Realtek 8188E USB WiFi"
+
+config RTL8189FS
+	tristate "Realtek 8189F SDIO WiFi"
 	depends on USB
 	---help---
-	  Help message of RTL8188EU
-
+	  Help message of RTL8189FS
