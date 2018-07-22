@@ -1,7 +1,7 @@
 CROSS_COMPILE ?= mips-linux-gnu-
 
 ifeq (${ISVP_ENV_KERNEL_DIR}, )
-	ISVP_ENV_KERNEL_DIR = $(PWD)/../../../kernel
+	ISVP_ENV_KERNEL_DIR = $(PWD)/../../../
 endif
 
 KDIR := ${ISVP_ENV_KERNEL_DIR}
