@@ -219,16 +219,15 @@ static int gic_set_affinity(struct irq_data *d, const struct cpumask *cpumask,
 
 	/* Assumption : cpumask refers to a single CPU */
 	spin_lock_irqsave(&gic_lock, flags);
-	for (;;) {
-		/* Re-route this IRQ */
-		GIC_SH_MAP_TO_VPE_SMASK(irq, first_cpu(tmp));
 
-		/* Update the pcpu_masks */
-		for (i = 0; i < NR_CPUS; i++)
-			clear_bit(irq, pcpu_masks[i].pcpu_mask);
-		set_bit(irq, pcpu_masks[first_cpu(tmp)].pcpu_mask);
+	/* Re-route this IRQ */
+	GIC_SH_MAP_TO_VPE_SMASK(irq, first_cpu(tmp));
 
-	}
+	/* Update the pcpu_masks */
+	for (i = 0; i < NR_CPUS; i++)
+		clear_bit(irq, pcpu_masks[i].pcpu_mask);
+	set_bit(irq, pcpu_masks[first_cpu(tmp)].pcpu_mask);
+
 	cpumask_copy(d->affinity, cpumask);
 	spin_unlock_irqrestore(&gic_lock, flags);
 
@@ -256,13 +255,11 @@ static void __init gic_setup_intr(unsigned int intr, unsigned int cpu,
 
 	/* Setup Intr to Pin mapping */
 	if (pin & GIC_MAP_TO_NMI_MSK) {
-		int i;
-
 		GICWRITE(GIC_REG_ADDR(SHARED, GIC_SH_MAP_TO_PIN(intr)), pin);
 		/* FIXME: hack to route NMI to all cpu's */
-		for (i = 0; i < NR_CPUS; i += 32) {
+		for (cpu = 0; cpu < NR_CPUS; cpu += 32) {
 			GICWRITE(GIC_REG_ADDR(SHARED,
-					  GIC_SH_MAP_TO_VPE_REG_OFF(intr, i)),
+					  GIC_SH_MAP_TO_VPE_REG_OFF(intr, cpu)),
 				 0xffffffff);
 		}
 	} else {

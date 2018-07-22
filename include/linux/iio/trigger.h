@@ -59,6 +59,7 @@ struct iio_trigger {
 	const char			*name;
 	struct device			dev;
 
+	void				*private_data;
 	struct list_head		list;
 	struct list_head		alloc_list;
 	int use_count;
@@ -83,12 +84,10 @@ static inline void iio_trigger_put(struct iio_trigger *trig)
 	put_device(&trig->dev);
 }
 
-static inline struct iio_trigger *iio_trigger_get(struct iio_trigger *trig)
+static inline void iio_trigger_get(struct iio_trigger *trig)
 {
 	get_device(&trig->dev);
 	__module_get(trig->ops->owner);
-
-	return trig;
 }
 
 /**

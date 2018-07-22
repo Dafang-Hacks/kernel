@@ -8,6 +8,7 @@
  *   written by Ralf Baechle <ralf@linux-mips.org>
  */
 #include <linux/compiler.h>
+#include <linux/vmalloc.h>
 #include <linux/init.h>
 #include <linux/kernel.h>
 #include <linux/console.h>
@@ -463,18 +464,6 @@ static void octeon_halt(void)
 	octeon_kill_core(NULL);
 }
 
-static char __read_mostly octeon_system_type[80];
-
-static int __init init_octeon_system_type(void)
-{
-	snprintf(octeon_system_type, sizeof(octeon_system_type), "%s (%s)",
-		cvmx_board_type_to_string(octeon_bootinfo->board_type),
-		octeon_model_get_string(read_c0_prid()));
-
-	return 0;
-}
-early_initcall(init_octeon_system_type);
-
 /**
  * Handle all the error condition interrupts that might occur.
  *
@@ -494,7 +483,11 @@ static irqreturn_t octeon_rlm_interrupt(int cpl, void *dev_id)
  */
 const char *octeon_board_type_string(void)
 {
-	return octeon_system_type;
+	static char name[80];
+	sprintf(name, "%s (%s)",
+		cvmx_board_type_to_string(octeon_bootinfo->board_type),
+		octeon_model_get_string(read_c0_prid()));
+	return name;
 }
 
 const char *get_system_type(void)
@@ -1174,3 +1167,30 @@ static int __init edac_devinit(void)
 	return err;
 }
 device_initcall(edac_devinit);
+
+static void __initdata *octeon_dummy_iospace;
+
+static int __init octeon_no_pci_init(void)
+{
+	/*
+	 * Initially assume there is no PCI. The PCI/PCIe platform code will
+	 * later re-initialize these to correct values if they are present.
+	 */
+	octeon_dummy_iospace = vzalloc(IO_SPACE_LIMIT);
+	set_io_port_base((unsigned long)octeon_dummy_iospace);
+	ioport_resource.start = MAX_RESOURCE;
+	ioport_resource.end = 0;
+	return 0;
+}
+core_initcall(octeon_no_pci_init);
+
+static int __init octeon_no_pci_release(void)
+{
+	/*
+	 * Release the allocated memory if a real IO space is there.
+	 */
+	if ((unsigned long)octeon_dummy_iospace != mips_io_port_base)
+		vfree(octeon_dummy_iospace);
+	return 0;
+}
+late_initcall(octeon_no_pci_release);

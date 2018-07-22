@@ -161,7 +161,6 @@ int ptrace_setfpregs(struct task_struct *child, __u32 __user *data)
 		__get_user(fregs[i], i + (__u64 __user *) data);
 
 	__get_user(child->thread.fpu.fcr31, data + 64);
-	child->thread.fpu.fcr31 &= ~FPU_CSR_ALL_X;
 
 	/* FIR may not be written.  */
 
@@ -223,14 +222,14 @@ int ptrace_set_watch_regs(struct task_struct *child,
 	for (i = 0; i < current_cpu_data.watch_reg_use_cnt; i++) {
 		__get_user(lt[i], &addr->WATCH_STYLE.watchlo[i]);
 #ifdef CONFIG_32BIT
-		if (lt[i] & __UA_LIMIT)
+		if (lt[i] & USER_DS.seg)
 			return -EINVAL;
 #else
 		if (test_tsk_thread_flag(child, TIF_32BIT_ADDR)) {
 			if (lt[i] & 0xffffffff80000000UL)
 				return -EINVAL;
 		} else {
-			if (lt[i] & __UA_LIMIT)
+			if (lt[i] & USER_DS.seg)
 				return -EINVAL;
 		}
 #endif
@@ -452,7 +451,7 @@ long arch_ptrace(struct task_struct *child, long request,
 			break;
 #endif
 		case FPC_CSR:
-			child->thread.fpu.fcr31 = data & ~FPU_CSR_ALL_X;
+			child->thread.fpu.fcr31 = data;
 			break;
 		case DSP_BASE ... DSP_BASE + 5: {
 			dspreg_t *dregs;

@@ -697,6 +697,8 @@ static void icmp_unreach(struct sk_buff *skb)
 					       &iph->daddr);
 			} else {
 				info = ntohs(icmph->un.frag.mtu);
+				if (!info)
+					goto out;
 			}
 			break;
 		case ICMP_SR_FAILED:
@@ -937,7 +939,8 @@ error:
 void icmp_err(struct sk_buff *skb, u32 info)
 {
 	struct iphdr *iph = (struct iphdr *)skb->data;
-	struct icmphdr *icmph = (struct icmphdr *)(skb->data+(iph->ihl<<2));
+	int offset = iph->ihl<<2;
+	struct icmphdr *icmph = (struct icmphdr *)(skb->data + offset);
 	int type = icmp_hdr(skb)->type;
 	int code = icmp_hdr(skb)->code;
 	struct net *net = dev_net(skb->dev);
@@ -947,7 +950,7 @@ void icmp_err(struct sk_buff *skb, u32 info)
 	 * triggered by ICMP_ECHOREPLY which sent from kernel.
 	 */
 	if (icmph->type != ICMP_ECHOREPLY) {
-		ping_err(skb, info);
+		ping_err(skb, offset, info);
 		return;
 	}
 

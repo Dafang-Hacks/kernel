@@ -293,12 +293,12 @@ static ssize_t state_show(struct kobject *kobj, struct kobj_attribute *attr,
 {
 	char *s = buf;
 #ifdef CONFIG_SUSPEND
-	suspend_state_t i;
+	int i;
 
-	for (i = PM_SUSPEND_MIN; i < PM_SUSPEND_MAX; i++)
-		if (pm_states[i].state)
-			s += sprintf(s,"%s ", pm_states[i].label);
-
+	for (i = 0; i < PM_SUSPEND_MAX; i++) {
+		if (pm_states[i] && valid_state(i))
+			s += sprintf(s,"%s ", pm_states[i]);
+	}
 #endif
 #ifdef CONFIG_HIBERNATION
 	s += sprintf(s, "%s\n", "disk");
@@ -314,7 +314,7 @@ static suspend_state_t decode_state(const char *buf, size_t n)
 {
 #ifdef CONFIG_SUSPEND
 	suspend_state_t state = PM_SUSPEND_MIN;
-	struct pm_sleep_state *s;
+	const char * const *s;
 #endif
 	char *p;
 	int len;
@@ -328,9 +328,8 @@ static suspend_state_t decode_state(const char *buf, size_t n)
 
 #ifdef CONFIG_SUSPEND
 	for (s = &pm_states[state]; state < PM_SUSPEND_MAX; s++, state++)
-		if (s->state && len == strlen(s->label)
-		    && !strncmp(buf, s->label, len))
-			return s->state;
+		if (*s && len == strlen(*s) && !strncmp(buf, *s, len))
+			return state;
 #endif
 
 	return PM_SUSPEND_ON;
@@ -434,6 +433,22 @@ static ssize_t wakeup_count_store(struct kobject *kobj,
 
 power_attr(wakeup_count);
 
+static ssize_t locked_show(struct kobject *kobj,
+				struct kobj_attribute *attr,
+				char *buf)
+{
+	return get_active_wakeup_sources(buf);
+}
+
+static ssize_t locked_store(struct kobject *kobj,
+				struct kobj_attribute *attr,
+				const char *buf, size_t n)
+{
+	return 0;
+}	
+
+power_attr(locked);
+
 #ifdef CONFIG_PM_AUTOSLEEP
 static ssize_t autosleep_show(struct kobject *kobj,
 			      struct kobj_attribute *attr,
@@ -446,8 +461,8 @@ static ssize_t autosleep_show(struct kobject *kobj,
 
 #ifdef CONFIG_SUSPEND
 	if (state < PM_SUSPEND_MAX)
-		return sprintf(buf, "%s\n", pm_states[state].state ?
-					pm_states[state].label : "error");
+		return sprintf(buf, "%s\n", valid_state(state) ?
+						pm_states[state] : "error");
 #endif
 #ifdef CONFIG_HIBERNATION
 	return sprintf(buf, "disk\n");
@@ -587,6 +602,7 @@ static struct attribute * g[] = {
 #ifdef CONFIG_PM_SLEEP
 	&pm_async_attr.attr,
 	&wakeup_count_attr.attr,
+	&locked_attr.attr,
 #ifdef CONFIG_PM_AUTOSLEEP
 	&autosleep_attr.attr,
 #endif

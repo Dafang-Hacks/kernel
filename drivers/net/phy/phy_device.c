@@ -657,6 +657,7 @@ static int genphy_config_advert(struct phy_device *phydev)
 		 ADVERTISE_PAUSE_ASYM);
 	adv |= ethtool_adv_to_mii_adv_t(advertise);
 
+#if 0
 	if (adv != oldadv) {
 		err = phy_write(phydev, MII_ADVERTISE, adv);
 
@@ -664,7 +665,7 @@ static int genphy_config_advert(struct phy_device *phydev)
 			return err;
 		changed = 1;
 	}
-
+#endif
 	/* Configure gigabit if it's supported */
 	if (phydev->supported & (SUPPORTED_1000baseT_Half |
 				SUPPORTED_1000baseT_Full)) {

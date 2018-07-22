@@ -36,9 +36,6 @@
 #include <linux/console.h>
 #endif
 
-#define ROCIT_CONFIG_GEN0		0x1f403000
-#define  ROCIT_CONFIG_GEN0_PCI_IOCU	BIT(7)
-
 extern void malta_be_init(void);
 extern int malta_be_handler(struct pt_regs *regs, int is_fixup);
 
@@ -111,8 +108,6 @@ static void __init fd_activate(void)
 static int __init plat_enable_iocoherency(void)
 {
 	int supported = 0;
-	u32 cfg;
-
 	if (mips_revision_sconid == MIPS_REVISION_SCON_BONITO) {
 		if (BONITO_PCICACHECTRL & BONITO_PCICACHECTRL_CPUCOH_PRES) {
 			BONITO_PCICACHECTRL |= BONITO_PCICACHECTRL_CPUCOH_EN;
@@ -135,9 +130,9 @@ static int __init plat_enable_iocoherency(void)
 	} else if (gcmp_niocu() != 0) {
 		/* Nothing special needs to be done to enable coherency */
 		pr_info("CMP IOCU detected\n");
-		cfg = __raw_readl((u32 *)CKSEG1ADDR(ROCIT_CONFIG_GEN0));
-		if (!(cfg & ROCIT_CONFIG_GEN0_PCI_IOCU)) {
-			pr_crit("IOCU OPERATION DISABLED BY SWITCH - DEFAULTING TO SW IO COHERENCY\n");
+		if ((*(unsigned int *)CKSEG1ADDR(0xbf403000) & 0x81) != 0x81) {
+			pr_crit("IOCU OPERATION DISABLED BY SWITCH"
+				" - DEFAULTING TO SW IO COHERENCY\n");
 			return 0;
 		}
 		supported = 1;
@@ -249,9 +244,142 @@ static void __init bonito_quirks_setup(void)
 #endif
 }
 
+#ifdef CONFIG_EVA
+extern unsigned int mips_cca;
+
+void __init plat_eva_setup(void)
+{
+	unsigned int val;
+
+#ifdef CONFIG_EVA_OLD_MALTA_MAP
+
+#ifdef CONFIG_EVA_3GB
+	val = ((MIPS_SEGCFG_UK << MIPS_SEGCFG_AM_SHIFT) |
+		(0 << MIPS_SEGCFG_PA_SHIFT) | (2 << MIPS_SEGCFG_C_SHIFT) |
+		(1 << MIPS_SEGCFG_EU_SHIFT));
+	val |= (((MIPS_SEGCFG_MK << MIPS_SEGCFG_AM_SHIFT) |
+		(0 << MIPS_SEGCFG_PA_SHIFT) | (mips_cca << MIPS_SEGCFG_C_SHIFT) |
+		(1 << MIPS_SEGCFG_EU_SHIFT)) << 16);
+	write_c0_segctl0(val);
+
+	val = ((MIPS_SEGCFG_MUSUK << MIPS_SEGCFG_AM_SHIFT) |
+		(0 << MIPS_SEGCFG_PA_SHIFT) | (mips_cca << MIPS_SEGCFG_C_SHIFT) |
+		(1 << MIPS_SEGCFG_EU_SHIFT));
+#else /* !CONFIG_EVA_3G */
+	val = ((MIPS_SEGCFG_MK << MIPS_SEGCFG_AM_SHIFT) |
+		(0 << MIPS_SEGCFG_PA_SHIFT) | (mips_cca << MIPS_SEGCFG_C_SHIFT) |
+		(1 << MIPS_SEGCFG_EU_SHIFT));
+	val |= (((MIPS_SEGCFG_MK << MIPS_SEGCFG_AM_SHIFT) |
+		(0 << MIPS_SEGCFG_PA_SHIFT) | (mips_cca << MIPS_SEGCFG_C_SHIFT) |
+		(1 << MIPS_SEGCFG_EU_SHIFT)) << 16);
+	write_c0_segctl0(val);
+
+	val = ((MIPS_SEGCFG_MUSUK << MIPS_SEGCFG_AM_SHIFT) |
+		(0 << MIPS_SEGCFG_PA_SHIFT) | (2 << MIPS_SEGCFG_C_SHIFT) |
+		(1 << MIPS_SEGCFG_EU_SHIFT));
+#endif /* CONFIG_EVA_3G */
+#ifdef CONFIG_SMP
+	val |= (((MIPS_SEGCFG_MUSUK << MIPS_SEGCFG_AM_SHIFT) |
+		(0 << MIPS_SEGCFG_PA_SHIFT) | (mips_cca << MIPS_SEGCFG_C_SHIFT) |
+		(1 << MIPS_SEGCFG_EU_SHIFT)) << 16);
+#else
+	val |= (((MIPS_SEGCFG_MUSUK << MIPS_SEGCFG_AM_SHIFT) |
+		(4 << MIPS_SEGCFG_PA_SHIFT) | (mips_cca << MIPS_SEGCFG_C_SHIFT) |
+		(1 << MIPS_SEGCFG_EU_SHIFT)) << 16);
+#endif
+	write_c0_segctl1(val);
+
+	val = ((MIPS_SEGCFG_MUSUK << MIPS_SEGCFG_AM_SHIFT) |
+		(6 << MIPS_SEGCFG_PA_SHIFT) | (mips_cca << MIPS_SEGCFG_C_SHIFT) |
+		(1 << MIPS_SEGCFG_EU_SHIFT));
+	val |= (((MIPS_SEGCFG_MUSUK << MIPS_SEGCFG_AM_SHIFT) |
+		(4 << MIPS_SEGCFG_PA_SHIFT) | (mips_cca << MIPS_SEGCFG_C_SHIFT) |
+		(1 << MIPS_SEGCFG_EU_SHIFT)) << 16);
+
+#else /* !CONFIG_EVA_OLD_MALTA_MAP */
+
+#ifdef CONFIG_EVA_3GB
+	val = ((MIPS_SEGCFG_UK << MIPS_SEGCFG_AM_SHIFT) |
+		(0 << MIPS_SEGCFG_PA_SHIFT) | (2 << MIPS_SEGCFG_C_SHIFT) |
+		(1 << MIPS_SEGCFG_EU_SHIFT));
+	val |= (((MIPS_SEGCFG_MK << MIPS_SEGCFG_AM_SHIFT) |
+		(0 << MIPS_SEGCFG_PA_SHIFT) | (mips_cca << MIPS_SEGCFG_C_SHIFT) |
+		(1 << MIPS_SEGCFG_EU_SHIFT)) << 16);
+	write_c0_segctl0(val);
+
+	val = ((MIPS_SEGCFG_MUSUK << MIPS_SEGCFG_AM_SHIFT) |
+		(6 << MIPS_SEGCFG_PA_SHIFT) | (mips_cca << MIPS_SEGCFG_C_SHIFT) |
+		(1 << MIPS_SEGCFG_EU_SHIFT));
+	val |= (((MIPS_SEGCFG_MUSUK << MIPS_SEGCFG_AM_SHIFT) |
+		(5 << MIPS_SEGCFG_PA_SHIFT) | (mips_cca << MIPS_SEGCFG_C_SHIFT) |
+		(1 << MIPS_SEGCFG_EU_SHIFT)) << 16);
+	write_c0_segctl1(val);
+
+	val = ((MIPS_SEGCFG_MUSUK << MIPS_SEGCFG_AM_SHIFT) |
+		(3 << MIPS_SEGCFG_PA_SHIFT) | (mips_cca << MIPS_SEGCFG_C_SHIFT) |
+		(1 << MIPS_SEGCFG_EU_SHIFT));
+	val |= (((MIPS_SEGCFG_MUSUK << MIPS_SEGCFG_AM_SHIFT) |
+		(1 << MIPS_SEGCFG_PA_SHIFT) | (mips_cca << MIPS_SEGCFG_C_SHIFT) |
+		(1 << MIPS_SEGCFG_EU_SHIFT)) << 16);
+#else /* !CONFIG_EVA_3G */
+	val = ((MIPS_SEGCFG_MK << MIPS_SEGCFG_AM_SHIFT) |
+		(0 << MIPS_SEGCFG_PA_SHIFT) | (mips_cca << MIPS_SEGCFG_C_SHIFT) |
+		(1 << MIPS_SEGCFG_EU_SHIFT));
+	val |= (((MIPS_SEGCFG_MK << MIPS_SEGCFG_AM_SHIFT) |
+		(0 << MIPS_SEGCFG_PA_SHIFT) | (mips_cca << MIPS_SEGCFG_C_SHIFT) |
+		(1 << MIPS_SEGCFG_EU_SHIFT)) << 16);
+	write_c0_segctl0(val);
+
+	val = ((MIPS_SEGCFG_MUSUK << MIPS_SEGCFG_AM_SHIFT) |
+		(0 << MIPS_SEGCFG_PA_SHIFT) | (2 << MIPS_SEGCFG_C_SHIFT) |
+		(1 << MIPS_SEGCFG_EU_SHIFT));
+	val |= (((MIPS_SEGCFG_MUSUK << MIPS_SEGCFG_AM_SHIFT) |
+		(0 << MIPS_SEGCFG_PA_SHIFT) | (mips_cca << MIPS_SEGCFG_C_SHIFT) |
+		(1 << MIPS_SEGCFG_EU_SHIFT)) << 16);
+	write_c0_segctl1(val);
+
+	val = ((MIPS_SEGCFG_MUSUK << MIPS_SEGCFG_AM_SHIFT) |
+		(2 << MIPS_SEGCFG_PA_SHIFT) | (mips_cca << MIPS_SEGCFG_C_SHIFT) |
+		(1 << MIPS_SEGCFG_EU_SHIFT));
+	val |= (((MIPS_SEGCFG_MUSUK << MIPS_SEGCFG_AM_SHIFT) |
+		(0 << MIPS_SEGCFG_PA_SHIFT) | (mips_cca << MIPS_SEGCFG_C_SHIFT) |
+		(1 << MIPS_SEGCFG_EU_SHIFT)) << 16);
+#endif /* CONFIG_EVA_3G */
+
+#endif /* CONFIG_EVA_OLD_MALTA_MAP */
+
+	write_c0_segctl2(val);
+	back_to_back_c0_hazard();
+
+	val = read_c0_config5();
+	write_c0_config5(val|MIPS_CONF5_K|MIPS_CONF5_CV);
+	back_to_back_c0_hazard();
+
+	printk("Enhanced Virtual Addressing (EVA) active\n");
+}
+
+extern int gcmp_present;
+void BEV_overlay_segment(void);
+#endif
+
 void __init plat_mem_setup(void)
 {
 	unsigned int i;
+
+#ifdef CONFIG_EVA
+#ifdef CONFIG_MIPS_CMP
+	if (gcmp_present)
+		BEV_overlay_segment();
+#endif
+
+	if ((cpu_has_segments) && (cpu_has_eva))
+		plat_eva_setup();
+	else {
+	    printk("cpu_has_segments=%ld cpu_has_eva=%ld\n",cpu_has_segments,cpu_has_eva);
+	    printk("Kernel is built for EVA support but EVA or segment control registers are not found\n");
+	    panic("EVA absent");
+	}
+#endif
 
 	mips_pcibios_init();
 
