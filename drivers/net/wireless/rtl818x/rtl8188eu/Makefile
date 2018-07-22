@@ -18,16 +18,16 @@ EXTRA_CFLAGS += -Wno-uninitialized
 
 EXTRA_CFLAGS += -I$(src)/include
 
-CONFIG_AUTOCFG_CP = n
+CONFIG_AUTOCFG_CP = y
 
 CONFIG_RTL8192C = n
 CONFIG_RTL8192D = n
 CONFIG_RTL8723A = n
 CONFIG_RTL8188E = y
 
-CONFIG_USB_HCI = y
+CONFIG_USB_HCI = n
 CONFIG_PCI_HCI = n
-CONFIG_SDIO_HCI = n
+CONFIG_SDIO_HCI = y
 CONFIG_GSPI_HCI = n
 
 CONFIG_MP_INCLUDED = y
@@ -81,6 +81,7 @@ CONFIG_PLATFORM_ARM_SUN7I = n
 CONFIG_PLATFORM_ACTIONS_ATM702X = n
 CONFIG_PLATFORM_MN10300 = n
 CONFIG_PLATFORM_ACTIONS_ATV5201 = n
+USER_MODULE_NAME=rtl8189es
 
 CONFIG_DRVEXT_MODULE = n
 
@@ -305,7 +306,7 @@ _HAL_INTFS_FILES += $(CHIP_FILES)
 ifeq ($(CONFIG_AUTOCFG_CP), y)
 
 ifeq ($(CONFIG_RTL8188E)$(CONFIG_SDIO_HCI),yy)
-$(shell cp $(TopDIR)/autoconf_rtl8189e_$(HCI_NAME)_linux.h $(TopDIR)/include/autoconf.h)
+# $(shell cp $(TopDIR)/autoconf_rtl8189e_$(HCI_NAME)_linux.h $(TopDIR)/include/autoconf.h)
 else
 $(shell cp $(TopDIR)/autoconf_$(RTL871X)_$(HCI_NAME)_linux.h $(TopDIR)/include/autoconf.h)
 endif
@@ -803,11 +804,11 @@ ifeq ($(CONFIG_RTL8723A), y)
 $(MODULE_NAME)-$(CONFIG_MP_INCLUDED)+= core/rtw_bt_mp.o
 endif
 
-obj-$(CONFIG_RTL8188EU) := $(MODULE_NAME).o
+obj-$(CONFIG_RTL8189ES) := $(MODULE_NAME).o
 
 else
 
-export CONFIG_RTL8188EU = m
+export CONFIG_RTL8189ES = m
 
 all: modules
 
