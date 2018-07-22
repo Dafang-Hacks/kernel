@@ -294,6 +294,7 @@ int jzgpio_ctrl_pull(enum gpio_port port, int enable_pull,unsigned long pins)
 
 	return 0;
 }
+EXPORT_SYMBOL(jzgpio_ctrl_pull);
 
 /* Functions followed for GPIOLIB */
 static int jz_gpio_set_pull(struct gpio_chip *chip,
