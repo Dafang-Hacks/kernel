@@ -119,19 +119,6 @@
 #include <linux/mroute.h>
 #endif
 
-#ifdef CONFIG_ANDROID_PARANOID_NETWORK
-#include <linux/android_aid.h>
-
-static inline int current_has_network(void)
-{
-	return in_egroup_p(AID_INET) || capable(CAP_NET_RAW);
-}
-#else
-static inline int current_has_network(void)
-{
-	return 1;
-}
-#endif
 
 /* The inetsw table contains everything that inet_create needs to
  * build a new socket.
@@ -276,10 +263,8 @@ void build_ehash_secret(void)
 		get_random_bytes(&rnd, sizeof(rnd));
 	} while (rnd == 0);
 
-	if (cmpxchg(&inet_ehash_secret, 0, rnd) == 0) {
+	if (cmpxchg(&inet_ehash_secret, 0, rnd) == 0)
 		get_random_bytes(&ipv6_hash_secret, sizeof(ipv6_hash_secret));
-		net_secret_init();
-	}
 }
 EXPORT_SYMBOL(build_ehash_secret);
 
@@ -299,12 +284,12 @@ static int inet_create(struct net *net, struct socket *sock, int protocol,
 	int try_loading_module = 0;
 	int err;
 
-	if (!current_has_network())
-		return -EACCES;
-
 	if (unlikely(!inet_ehash_secret))
 		if (sock->type != SOCK_RAW && sock->type != SOCK_DGRAM)
 			build_ehash_secret();
+
+	if (protocol < 0 || protocol >= IPPROTO_MAX)
+		return -EINVAL;
 
 	sock->state = SS_UNCONNECTED;
 
@@ -354,7 +339,8 @@ lookup_protocol:
 	}
 
 	err = -EPERM;
-	if (sock->type == SOCK_RAW && !kern && !capable(CAP_NET_RAW))
+	if (sock->type == SOCK_RAW && !kern &&
+	    !ns_capable(net->user_ns, CAP_NET_RAW))
 		goto out_rcu_unlock;
 
 	sock->ops = answer->ops;
@@ -922,7 +908,6 @@ int inet_ioctl(struct socket *sock, unsigned int cmd, unsigned long arg)
 	case SIOCSIFPFLAGS:
 	case SIOCGIFPFLAGS:
 	case SIOCSIFFLAGS:
-	case SIOCKILLADDR:
 		err = devinet_ioctl(net, cmd, (void __user *)arg);
 		break;
 	default:
@@ -1068,7 +1053,7 @@ static struct inet_protosw inetsw_array[] =
 		.type =       SOCK_DGRAM,
 		.protocol =   IPPROTO_ICMP,
 		.prot =       &ping_prot,
-		.ops =        &inet_dgram_ops,
+		.ops =        &inet_sockraw_ops,
 		.no_check =   UDP_CSUM_DEFAULT,
 		.flags =      INET_PROTOSW_REUSE,
        },
