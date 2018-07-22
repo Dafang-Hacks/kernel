@@ -38,24 +38,24 @@ enum jz_motor_cnt {
 
 
 /*************************** HORIZONTAL  MOTOR ************************************/
-#define HORIZONTAL_MIN_GPIO		GPIO_PC(13)	/**< motor start point */
-#define HORIZONTAL_MAX_GPIO		GPIO_PC(14)	/**< motor stop point */
-#define HORIZONTAL_GPIO_LEVEL	0		/**< motor irq style */
+#define HORIZONTAL_MIN_GPIO		77	/**< motor start point */
+#define HORIZONTAL_MAX_GPIO		78	/**< motor stop point */
+#define HORIZONTAL_GPIO_LEVEL	1		/**< motor irq style */
 
-#define HORIZONTAL_ST1_GPIO		GPIO_PB(22)	/**< Phase A */
-#define HORIZONTAL_ST2_GPIO		GPIO_PB(21)	/**< Phase B */
-#define HORIZONTAL_ST3_GPIO		GPIO_PB(20)	/**< Phase C */
-#define HORIZONTAL_ST4_GPIO		GPIO_PB(19)	/**< Phase D */
+#define HORIZONTAL_ST1_GPIO		GPIO_PB(19)	/**< Phase A */
+#define HORIZONTAL_ST2_GPIO		GPIO_PB(20)	/**< Phase B */
+#define HORIZONTAL_ST3_GPIO		GPIO_PB(21)	/**< Phase C */
+#define HORIZONTAL_ST4_GPIO		GPIO_PB(22)	/**< Phase D */
 
 /*************************** VERTICAL  MOTOR ************************************/
-#define VERTICAL_MIN_GPIO		GPIO_PC(18)
-#define VERTICAL_MAX_GPIO		GPIO_PB(28)
-#define VERTICAL_GPIO_LEVEL		0
+#define VERTICAL_MIN_GPIO		41
+#define VERTICAL_MAX_GPIO		60
+#define VERTICAL_GPIO_LEVEL		1
 
-#define VERTICAL_ST1_GPIO		GPIO_PC(11)
-#define VERTICAL_ST2_GPIO		GPIO_PC(12)
-#define VERTICAL_ST3_GPIO		GPIO_PC(15)
-#define VERTICAL_ST4_GPIO		GPIO_PC(16)
+#define VERTICAL_ST1_GPIO		75
+#define VERTICAL_ST2_GPIO		76
+#define VERTICAL_ST3_GPIO		79
+#define VERTICAL_ST4_GPIO		80
 
 /****************************** MOTOR END ************************************/
 
