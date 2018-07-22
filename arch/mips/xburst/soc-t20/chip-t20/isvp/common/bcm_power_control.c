@@ -218,9 +218,9 @@ int bcm_wlan_init(void)
 	wifi_le_set_io();
 
 
-#if defined(WL_REG_EN)
-	reset = WL_REG_EN;
-	if (gpio_request(WL_REG_EN, "wifi_reset")) {
+#if defined(HOST_WIFI_RST)
+	reset = HOST_WIFI_RST;
+	if (gpio_request(HOST_WIFI_RST, "wifi_reset")) {
 		pr_err("no wifi_reset pin available\n");
 
 		return -EINVAL;

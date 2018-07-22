@@ -27,7 +27,7 @@
 /*****************************************************************************************************************/
 
 #define SSI0_PORTC							\
-	{ .name = "ssi0-pc",	       .port = GPIO_PORT_C, .func = GPIO_FUNC_0, .pins = 0x1F800, }
+	{ .name = "ssi0-pa",	       .port = GPIO_PORT_C, .func = GPIO_FUNC_0, .pins = 0x1F800, }
 /* SFC : the function of hold and reset not use, hardware pull up */
 #define SFC_PORTA_QUAD							\
 	{ .name = "sfc",		.port = GPIO_PORT_A, .func = GPIO_FUNC_1, .pins = (0x3f << 23), }
@@ -90,10 +90,6 @@
 
 #define DMIC_PORTC							\
 	{ .name = "dmic_pc",	.port = GPIO_PORT_C, .func = GPIO_FUNC_1, .pins = 0x1<<15 | 0x3 << 11}
-
-/*******************************************************************************************************************/
-#define GMAC_PORTB							\
-	{ .name = "gmac_pb",	.port = GPIO_PORT_B, .func = GPIO_FUNC_0, .pins = 0x0001efc0}
 
 /*******************************************************************************************************************/
 

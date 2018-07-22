@@ -43,7 +43,6 @@ enum {
 	HAL_PIXEL_FORMAT_NV12		  = 0x18,
 	HAL_PIXEL_FORMAT_NV21 		  = 0x19,
 	HAL_PIXEL_FORMAT_BGRA_5551    = 0x1a,
-    HAL_PIXEL_FORMAT_HSV          = 0x1b,/*Add HSV*/
 
 	/* suport for YUV420 */
 	HAL_PIXEL_FORMAT_JZ_YUV_420_P       = 0x47700001, // YUV_420_P

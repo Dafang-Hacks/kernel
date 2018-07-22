@@ -1,17 +1,9 @@
-/** @file circularbuf.c
- *
- * PCIe host driver and dongle firmware need to communicate with each other. The mechanism consists
- * of multiple circular buffers located in (DMA'able) host memory. A circular buffer is either used
- * for host -> dongle (h2d) or dongle -> host communication. Both host driver and firmware make use
- * of this source file. This source file contains functions to manage such a set of circular
- * buffers, but does not contain the code to read or write the data itself into the buffers. It
- * leaves that up to the software layer that uses this file, which can be implemented either using
- * pio or DMA transfers. It also leaves the format of the data that is written and read to a higher
- * layer. Typically the data is in the form of so-called 'message buffers'.
+/*
+ * Initialization and support routines for self-booting compressed image.
  *
  * $Copyright Open Broadcom Corporation$
  *
- * $Id: circularbuf.c 467150 2014-04-02 17:30:43Z $
+ * $Id: circularbuf.c 452261 2014-01-29 19:30:23Z $
  */
 
 #include <circularbuf.h>
@@ -34,13 +26,13 @@ int cbuf_msg_level = CBUF_ERROR_VAL | CBUF_TRACE_VAL | CBUF_INFORM_VAL;
 #define CBUF_DEBUG_CHECK(x)
 #endif	/* CBUF_DEBUG */
 
-/**
+/*
  * -----------------------------------------------------------------------------
  * Function   : circularbuf_init
  * Description:
  *
  *
- * Input Args : buf_base_addr: address of DMA'able host memory provided by caller
+ * Input Args :
  *
  *
  * Return Values :
@@ -62,11 +54,6 @@ circularbuf_init(circularbuf_t *handle, void *buf_base_addr, uint16 total_buf_le
 	return;
 }
 
-/**
- * When an item is added to the circular buffer by the producing party, the consuming party has to
- * be notified by means of a 'door bell' or 'ring'. This function allows the caller to register a
- * 'ring' function that will be called when a 'write complete' occurs.
- */
 void
 circularbuf_register_cb(circularbuf_t *handle, mb_ring_t mb_ring_func, void *ctx)
 {
@@ -91,13 +78,13 @@ circularbuf_check_sanity(circularbuf_t *handle)
 }
 #endif /* CBUF_DEBUG */
 
-/**
+/*
  * -----------------------------------------------------------------------------
  * Function   : circularbuf_reserve_for_write
  *
  * Description:
  * This function reserves N bytes for write in the circular buffer. The circularbuf
- * implementation will only reserve space in the circular buffer and return
+ * implementation will only reserve space in the ciruclar buffer and return
  * the pointer to the address where the new data can be written.
  * The actual write implementation (bcopy/dma) is outside the scope of
  * circularbuf implementation.
@@ -170,7 +157,7 @@ circularbuf_reserve_for_write(circularbuf_t *handle, uint16 size)
 	return NULL;
 }
 
-/**
+/*
  * -----------------------------------------------------------------------------
  * Function   : circularbuf_write_complete
  *
@@ -178,7 +165,7 @@ circularbuf_reserve_for_write(circularbuf_t *handle, uint16 size)
  * This function has to be called by the producer end of circularbuf to indicate to
  * the circularbuf layer that data has been written and the write pointer can be
  * updated. In the process, if there was a doorbell callback registered, that
- * function would also be invoked as to notify the consuming party.
+ * function would also be invoked.
  *
  * Input Args :
  *		dest_addr	  : Address where the data was written. This would be the
@@ -209,7 +196,7 @@ circularbuf_write_complete(circularbuf_t *handle, uint16 bytes_written)
 		handle->mb_ring_bell(handle->mb_ctx);
 }
 
-/**
+/*
  * -----------------------------------------------------------------------------
  * Function   : circularbuf_get_read_ptr
  *
@@ -218,7 +205,7 @@ circularbuf_write_complete(circularbuf_t *handle, uint16 bytes_written)
  * the circular buffer. This will typically be invoked when the consumer gets a
  * doorbell interrupt.
  * Please note that the function only returns the pointer (and length) from
- * where the data can be read. Actual read implementation is up to the
+ * where the data can be read. Actual read implementation is upto the
  * consumer. It could be a bcopy or dma.
  *
  * Input Args :
@@ -264,14 +251,12 @@ circularbuf_get_read_ptr(circularbuf_t *handle, uint16 *available_len)
 	return ret_addr;
 }
 
-/**
+/*
  * -----------------------------------------------------------------------------
  * Function   : circularbuf_read_complete
  * Description:
  * This function has to be called by the consumer end of circularbuf to indicate
- * that data has been consumed and the read pointer can be updated, so the producing side
- * can can use the freed space for new entries.
- *
+ * that data has been consumed and the read pointer can be updated.
  *
  * Input Args :
  *		bytes_read : No. of bytes consumed by the consumer. This has to match
@@ -289,15 +274,14 @@ circularbuf_read_complete(circularbuf_t *handle, uint16 bytes_read)
 	ASSERT(bytes_read < handle->depth);
 
 	/* Update the read pointer */
-	if ((handle->w_ptr < handle->e_ptr) && (handle->r_ptr + bytes_read) > handle->e_ptr)
+	if ((handle->r_ptr + bytes_read) >= handle->depth)
 		handle->r_ptr = bytes_read;
 	else
 		handle->r_ptr += bytes_read;
 
 	return CIRCULARBUF_SUCCESS;
 }
-
-/**
+/*
  * -----------------------------------------------------------------------------
  * Function	: circularbuf_revert_rp_ptr
  *

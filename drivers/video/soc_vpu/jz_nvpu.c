@@ -186,14 +186,11 @@ void reset_ncu(void)
 
 static void vpu_start_ncu(struct jz_vpu *vpu,void *ncu_addr)
 {
-	ncu_reg_info_t reg[50];
+	ncu_reg_info_t *reg = ncu_addr;
 	unsigned int i;
 
-	copy_from_user(reg, ncu_addr, ARRAY_SIZE(reg) * sizeof(ncu_reg_info_t));
-	for (i = 0; i < 50; i++) {
-		if ((reg + i)->addr == 0 || (reg + i)->addr > 0x200)
-			break;
-		else
+	for (i = 0; i < 50; i++){
+		if ((reg + i)->addr)
 			ncu_write((reg + i)->addr, (reg + i)->val);
 	}
 
@@ -361,7 +358,7 @@ static long vpu_resume(struct device *dev)
 	}
 
 	if (vpu->vpu.id == 0) {
-		clk_set_rate(vpu->clk,350000000);
+		clk_set_rate(vpu->clk,300000000);
 		clk_enable(vpu->clk);
 	}
 #ifdef CONFIG_BOARD_T10_FPGA
@@ -492,7 +489,7 @@ static int vpu_probe(struct platform_device *pdev)
 			ret = PTR_ERR(vpu->clk);
 			goto err_get_vpu_clk_cgu;
 		}
-		clk_set_rate(vpu->clk,350000000);
+		clk_set_rate(vpu->clk,300000000);
 	}
 
 	spin_lock_init(&vpu->slock);

@@ -3,7 +3,7 @@
  *
  * $Copyright Open Broadcom Corporation$
  *
- * $Id: wpa.h 492853 2014-07-23 17:20:34Z $
+ * $Id: wpa.h 384536 2013-02-12 04:13:09Z $
  */
 
 #ifndef _proto_wpa_h_
@@ -62,8 +62,6 @@ typedef BWL_PRE_PACKED_STRUCT struct {
 #define WPA_RSN_IE_FIXED_LEN	4
 #define WPA_RSN_IE_TAG_FIXED_LEN	2
 typedef uint8 wpa_pmkid_t[WPA2_PMKID_LEN];
-
-#define WFA_OSEN_IE_FIXED_LEN	6
 
 /* WPA suite/multicast suite */
 typedef BWL_PRE_PACKED_STRUCT struct
@@ -177,7 +175,6 @@ typedef BWL_PRE_PACKED_STRUCT struct
 #define	WPA_CAP_WPA2_PREAUTH		RSN_CAP_PREAUTH
 
 #define WPA2_PMKID_COUNT_LEN	2
-#define RSN_GROUPMANAGE_CIPHER_LEN 4
 
 #ifdef BCMWAPI_WAI
 #define WAPI_CAP_PREAUTH		RSN_CAP_PREAUTH

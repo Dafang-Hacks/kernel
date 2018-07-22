@@ -36,7 +36,6 @@
 #include <linux/clk.h>
 #include <soc/cpm.h>
 #include <soc/base.h>
-#include <jz_proc.h>
 
 #include "jz_mac_v13.h"
 
@@ -75,10 +74,6 @@ typedef enum {
 	/* MAC PHY Soft reset */
 	MAC_SREST,
 } mac_clock_control;
-
-
-DEFINE_SEMAPHORE(mutex_mdio);
-
 
 /* MDC  = 2.5 MHz */
 #ifndef JZMAC_MDC_CLK
@@ -1643,9 +1638,9 @@ static void jzmac_init(void) {
 	synopGMAC_unicast_hash_filter_disable(gmacdev);
 
 	/*Flow Control Configuration*/
-	synopGMAC_unicast_pause_frame_detect_enable(gmacdev);
-	synopGMAC_rx_flow_control_enable(gmacdev);
-	synopGMAC_tx_flow_control_enable(gmacdev);
+	synopGMAC_unicast_pause_frame_detect_disable(gmacdev);
+	synopGMAC_rx_flow_control_disable(gmacdev);
+	synopGMAC_tx_flow_control_disable(gmacdev);
 }
 
 static void jz_mac_configure(struct jz_mac_local *lp) {
@@ -1985,16 +1980,6 @@ static struct ethtool_ops jz_mac_ethtool_ops = {
 	.get_link	= ethtool_op_get_link,
 };
 
-static ssize_t mdio_cmd_set(struct file *file, const char __user *buffer, size_t count, loff_t *f_pos);
-static int mdio_cmd_open(struct inode *inode, struct file *file);
-static const struct file_operations mdio_cmd_fops ={
-	.read = seq_read,
-	.open = mdio_cmd_open,
-	.llseek = seq_lseek,
-	.release = single_release,
-	.write = mdio_cmd_set,
-};
-
 static int jz_mac_probe(struct platform_device *pdev)
 {
 	struct net_device *ndev;
@@ -2002,7 +1987,6 @@ static int jz_mac_probe(struct platform_device *pdev)
 	struct platform_device *pd;
 	int rc;
 	int i;
-	struct proc_dir_entry *proc;
 
 	printk("=======>gmacdev = 0x%08x<================\n", (u32)gmacdev);
 	synopGMAC_multicast_enable(gmacdev);
@@ -2053,11 +2037,6 @@ static int jz_mac_probe(struct platform_device *pdev)
 	}
 	pd = pdev->dev.platform_data;
 	lp->mii_bus = platform_get_drvdata(pd);
-	if(IS_ERR_OR_NULL(lp->mii_bus)){
-		dev_err(&pdev->dev, "Cannot get mii_bus!\n");
-		rc = -ENODEV;
-		goto out_err_probe_mac;
-	}
 #ifdef CONFIG_MDIO_GPIO
 	lp->mii_bus->priv = ndev;
 #endif
@@ -2118,18 +2097,6 @@ static int jz_mac_probe(struct platform_device *pdev)
 	dev_info(&pdev->dev, "%s, Version %s\n", JZMAC_DRV_DESC, JZMAC_DRV_VERSION);
 	//	jzmac_dump_all_regs(__func__, __LINE__);
 	//synopGMAC_multicast_enable(gmacdev);
-
-	/* proc info */
-	proc = jz_proc_mkdir("mdio");
-	if (!proc) {
-		printk("create mdio info failed!\n");
-	}
-	proc_create_data("cmd", S_IRUGO, proc, &mdio_cmd_fops, NULL);
-
-
-
-
-
 	return 0;
 
 out_err_reg_ndev:
@@ -2212,14 +2179,8 @@ static int jz_mdiobus_read(struct mii_bus *bus, int phy_addr, int regnum)
 {
 	u16 data = 0;
 	s32 status;
-	int ret = -1;
 
-	ret = down_interruptible(&mutex_mdio);
-	if (0 != ret) {
-		printk("err(%s): ret = %d\n", __func__, ret);
-	}
 	status = synopGMAC_read_phy_reg(gmacdev, phy_addr, regnum, &data);
-	up(&mutex_mdio);
 	//printk("=======>mdio read phy%d reg %d, return data = 0x%04x status = %d\n",
 	//		phy_addr, regnum, data, status);
 
@@ -2227,21 +2188,13 @@ static int jz_mdiobus_read(struct mii_bus *bus, int phy_addr, int regnum)
 	if (status)
 		data = 0;
 
-	/* It is wrong that the value of data is 0 when reading PHY-ID,
-	 * so that the value should be changed to  0xffff.
-	 * */
-	if(regnum == MII_PHYSID1 || regnum == MII_PHYSID2){
-		data = data ? data : 0xffff;
-	}
 	return (int)data;
 }
 
 static int jz_mdio_phy_read(struct net_device *dev, int phy_id, int location)
 {
 	struct jz_mac_local *lp = netdev_priv(dev);
-	int ret = -1;
-	ret = jz_mdiobus_read(lp->mii_bus, phy_id, location);
-	return ret;
+	return jz_mdiobus_read(lp->mii_bus, phy_id, location);
 }
 
 /* Write an off-chip register in a PHY through the MDC/MDIO port */
@@ -2250,14 +2203,7 @@ static int jz_mdiobus_write(struct mii_bus *bus, int phy_addr, int regnum,
 {
 	//printk("======>mdio write phy%d reg %d with value = 0x%04x\n",
 	//		phy_addr, regnum, value);
-	int ret = -1;
-	ret = down_interruptible(&mutex_mdio);
-	if (0 != ret) {
-		printk("err(%s): ret = %d\n", __func__, ret);
-	}
-	ret = synopGMAC_write_phy_reg(gmacdev, phy_addr, regnum, value);
-	up(&mutex_mdio);
-	return ret;
+	return synopGMAC_write_phy_reg(gmacdev, phy_addr, regnum, value);
 }
 
 static void jz_mdio_phy_write(struct net_device *dev, int phy_id, int location, int value)
@@ -2440,77 +2386,3 @@ static void __exit jz_mac_cleanup(void)
 }
 
 module_exit(jz_mac_cleanup);
-
-
-
-/* cmd */
-#define MDIO_CMD_BUF_SIZE 100
-static uint8_t mdio_cmd_buf[100];
-static int mdio_cmd_show(struct seq_file *m, void *v)
-{
-	int len = 0;
-	len += seq_printf(m ,"%s\n", mdio_cmd_buf);
-	return len;
-}
-
-static ssize_t mdio_cmd_set(struct file *file, const char __user *buffer, size_t count, loff_t *f_pos)
-{
-	int ret = 0;
-	char *buf = kzalloc((count+1), GFP_KERNEL);
-	if(!buf)
-		return -ENOMEM;
-	if(copy_from_user(buf, buffer, count))
-	{
-		kfree(buf);
-		return EFAULT;
-	}
-	if (!strncmp(buf, "r reg", sizeof("r reg")-1)) {
-		uint32_t phybase;
-		uint32_t regoffset;
-		uint16_t data = 0;
-		ret = sscanf(buf, "r reg:%i-%i", &phybase, &regoffset);
-		if (2!=ret)
-			return EFAULT;
-		{
-			ret = down_interruptible(&mutex_mdio);
-			if (0 != ret) {
-				printk("err(%s): ret = %d\n", __func__, ret);
-			}
-			ret = synopGMAC_read_phy_reg(gmacdev, phybase, regoffset, &data);
-			up(&mutex_mdio);
-		}
-		if (ret)
-			printk("##### err %s.%d\n", __func__, __LINE__);
-		printk("mdio: reg read 0x%x-0x%x:0x%x\n", phybase, regoffset, data);
-		sprintf(mdio_cmd_buf, "mdio: reg read 0x%x-0x%x:0x%x\n", phybase, regoffset, data);
-	} else if (!strncmp(buf, "w reg", sizeof("w reg")-1)) {
-		uint32_t phybase;
-		uint32_t regoffset;
-		uint32_t data = 0;
-		ret = sscanf(buf, "w reg:%i-%i-%i", &phybase, &regoffset, &data);
-		if (3!=ret)
-			return EFAULT;
-		printk("mdio: reg write 0x%x-0x%x-0x%x\n", phybase, regoffset, data);
-		{
-
-			ret = down_interruptible(&mutex_mdio);
-			if (0 != ret) {
-				printk("err(%s): ret = %d\n", __func__, ret);
-			}
-			ret = synopGMAC_write_phy_reg(gmacdev, phybase, regoffset, data);
-			up(&mutex_mdio);
-		}
-		if (!ret)
-			sprintf(mdio_cmd_buf, "%s\n", "ok");
-		else
-			sprintf(mdio_cmd_buf, "%s\n", "nok");
-	} else {
-		sprintf(mdio_cmd_buf, "null");
-	}
-	kfree(buf);
-	return count;
-}
-static int mdio_cmd_open(struct inode *inode, struct file *file)
-{
-	return single_open_size(file, mdio_cmd_show, PDE_DATA(inode),8192);
-}

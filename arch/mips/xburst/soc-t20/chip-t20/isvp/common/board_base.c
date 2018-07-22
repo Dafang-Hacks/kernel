@@ -66,7 +66,6 @@ static struct jz_platform_device platform_devices_array[] __initdata = {
 
 #ifdef CONFIG_BCM_PM_CORE
 	DEF_DEVICE(&bcm_power_platform_device, 0, 0),
-	DEF_DEVICE(&wlan_device, 0, 0),
 #endif
 #ifdef CONFIG_JZ_IPU_V12
 	DEF_DEVICE(&jz_ipu_device, 0, 0),
@@ -143,18 +142,12 @@ static struct jz_platform_device platform_devices_array[] __initdata = {
 #ifdef CONFIG_MFD_JZ_TCU
 	DEF_DEVICE(&jz_tcu_device, 0, 0),
 #endif
-#ifdef CONFIG_JZ_SPI0
-       DEF_DEVICE(&jz_ssi0_device, &spi0_info_cfg, sizeof(struct jz_spi_info)),
-#endif
-#ifdef CONFIG_JZ_SPI1
-       DEF_DEVICE(&jz_ssi1_device, &spi1_info_cfg, sizeof(struct jz_spi_info)),
-#endif
 };
 
 static int __init board_base_init(void)
 {
 	int pdevices_array_size, i;
-
+	
 	pdevices_array_size = ARRAY_SIZE(platform_devices_array);
 	for(i = 0; i < pdevices_array_size; i++) {
 		if(platform_devices_array[i].size)

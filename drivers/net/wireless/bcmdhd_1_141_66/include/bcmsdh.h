@@ -5,7 +5,7 @@
  *
  * $ Copyright Open License Broadcom Corporation $
  *
- * $Id: bcmsdh.h 450676 2014-01-22 22:45:13Z $
+ * $Id: bcmsdh.h 455573 2014-02-14 17:49:31Z $
  */
 
 /**
@@ -19,7 +19,7 @@
 #define BCMSDH_INFO_VAL		0x0002 /* Info */
 extern const uint bcmsdh_msglevel;
 
-#define BCMSDH_ERROR(x) printf x
+#define BCMSDH_ERROR(x)
 #define BCMSDH_INFO(x)
 
 #if defined(BCMSDIO) && (defined(BCMSDIOH_STD) || defined(BCMSDIOH_BCM) || \
@@ -132,11 +132,6 @@ extern int bcmsdh_send_buf(void *sdh, uint32 addr, uint fn, uint flags,
 extern int bcmsdh_recv_buf(void *sdh, uint32 addr, uint fn, uint flags,
                            uint8 *buf, uint nbytes, void *pkt,
                            bcmsdh_cmplt_fn_t complete_fn, void *handle);
-#if defined(SWTXGLOM)
-extern int bcmsdh_send_swtxglom_buf(void *sdh, uint32 addr, uint fn, uint flags,
-                           uint8 *buf, uint nbytes, void *pkt,
-                           bcmsdh_cmplt_fn_t complete_fn, void *handle);
-#endif
 
 extern void bcmsdh_glom_post(void *sdh, uint8 *frame, void *pkt, uint len);
 extern void bcmsdh_glom_clear(void *sdh);
@@ -215,7 +210,7 @@ extern int bcmsdh_oob_intr_register(bcmsdh_info_t *bcmsdh, bcmsdh_cb_fn_t oob_ir
 	void* oob_irq_handler_context);
 extern void bcmsdh_oob_intr_unregister(bcmsdh_info_t *sdh);
 extern void bcmsdh_oob_intr_set(bcmsdh_info_t *sdh, bool enable);
-#endif
+#endif 
 extern void bcmsdh_dev_pm_stay_awake(bcmsdh_info_t *sdh);
 extern void bcmsdh_dev_relax(bcmsdh_info_t *sdh);
 extern bool bcmsdh_dev_pm_enabled(bcmsdh_info_t *sdh);

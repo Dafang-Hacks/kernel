@@ -1,6 +1,6 @@
 /*
 * $Copyright Open 2009 Broadcom Corporation$
-* $Id: wlfc_proto.h 499510 2014-08-28 23:40:47Z $
+* $Id: wlfc_proto.h 431159 2013-10-22 19:40:51Z $
 *
 */
 #ifndef __wlfc_proto_definitions_h__
@@ -81,9 +81,6 @@
 #define WLFC_CTL_TYPE_TRANS_ID			18
 #define WLFC_CTL_TYPE_COMP_TXSTATUS		19
 
-#define WLFC_CTL_TYPE_TID_OPEN			20
-#define WLFC_CTL_TYPE_TID_CLOSE			21
-
 
 #define WLFC_CTL_TYPE_FILLER			255
 
@@ -107,9 +104,8 @@
 #define WLFC_CTL_VALUE_LEN_REQUEST_PACKET	3	/* credit, MAC-handle, prec_bitmap */
 
 
-#define WLFC_PKTFLAG_PKTFROMHOST	0x01 /* packet originated from hot side */
-#define WLFC_PKTFLAG_PKT_REQUESTED	0x02 /* packet requsted by firmware side */
-#define WLFC_PKTFLAG_PKT_FORCELOWRATE	0x04 /* force low rate for this packet */
+#define WLFC_PKTFLAG_PKTFROMHOST	0x01
+#define WLFC_PKTFLAG_PKT_REQUESTED	0x02
 
 #define WL_TXSTATUS_STATUS_MASK			0xff /* allow 8 bits */
 #define WL_TXSTATUS_STATUS_SHIFT		24
@@ -199,6 +195,13 @@
 
 /* b[7:5] -reuse guard, b[4:0] -value */
 #define WLFC_MAC_DESC_GET_LOOKUP_INDEX(x) ((x) & 0x1f)
+
+#define WLFC_PKTFLAG_SET_PKTREQUESTED(x)	(x) |= \
+	(WLFC_PKTFLAG_PKT_REQUESTED << WL_TXSTATUS_FLAGS_SHIFT)
+
+#define WLFC_PKTFLAG_CLR_PKTREQUESTED(x)	(x) &= \
+	~(WLFC_PKTFLAG_PKT_REQUESTED << WL_TXSTATUS_FLAGS_SHIFT)
+
 
 #define WLFC_MAX_PENDING_DATALEN	120
 

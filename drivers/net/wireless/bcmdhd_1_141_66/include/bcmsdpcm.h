@@ -4,7 +4,7 @@
  *
  * $Copyright Open 2005 Broadcom Corporation$
  *
- * $Id: bcmsdpcm.h 472405 2014-04-23 23:46:55Z $
+ * $Id: bcmsdpcm.h 414378 2013-07-24 15:58:50Z $
  */
 
 #ifndef	_bcmsdpcm_h_
@@ -250,11 +250,14 @@ typedef struct {
 	uint32  assert_exp_addr;
 	uint32  assert_file_addr;
 	uint32  assert_line;
-	uint32	console_addr;		/* Address of hnd_cons_t */
+	uint32	console_addr;		/* Address of hndrte_cons_t */
 	uint32  msgtrace_addr;
 	uint32  fwid;
 } sdpcm_shared_t;
 
 extern sdpcm_shared_t sdpcm_shared;
+
+/* Function can be used to notify host of FW halt */
+extern void sdpcmd_fwhalt(void);
 
 #endif	/* _bcmsdpcm_h_ */

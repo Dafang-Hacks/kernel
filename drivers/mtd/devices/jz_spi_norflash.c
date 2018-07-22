@@ -41,91 +41,11 @@ struct spi_device_id jz_id_table[] = {
 	},
 };
 
-#define SIZE_BOOTLOADER		0x100000
-#define SIZE_KERNEL     	0x200000
-#define SIZE_ROOTFS			0x500000
-struct mtd_partition jz_mtd_partition1[] = {
-	{
-		.name =     "bootloader",
-		.offset =   0,
-		.size =     SIZE_BOOTLOADER,
-	},
-	{
-		.name =     "kernel",
-		.offset =   SIZE_BOOTLOADER,
-		.size =     SIZE_KERNEL,
-	},
-	{
-		.name =     "recovery",
-		.offset =   SIZE_KERNEL + SIZE_BOOTLOADER,
-		.size =     SIZE_ROOTFS,
-	},
-};
-static struct spi_nor_block_info flash_block_info[] = {
-	{
-		.blocksize      = 64 * 1024,
-		.cmd_blockerase = 0xD8,
-		.be_maxbusy     = 1200,  /* 1.2s */
-	},
+struct mtd_partition *jz_mtd_partition;
 
-	{
-		.blocksize      = 32 * 1024,
-		.cmd_blockerase = 0x52,
-		.be_maxbusy     = 1000,  /* 1s */
-	},
-};
-static struct spi_nor_platform_data spi_nor_pdata = {
-	.pagesize       = 256,
-	.sectorsize     = 4 * 1024,
-	.chipsize       = 8192 * 1024,
-	.erasesize      = 4 * 1024,
-	.id             = 0xc84017,
-
-	.block_info     = flash_block_info,
-	.num_block_info = ARRAY_SIZE(flash_block_info),
-
-	.addrsize       = 3,
-	.pp_maxbusy     = 3,            /* 3ms */
-	.se_maxbusy     = 400,          /* 400ms */
-	.ce_maxbusy     = 8 * 10000,    /* 80s */
-
-	.st_regnum      = 3,
-
-	.mtd_partition  = jz_mtd_partition1,
-	.num_partition_info = ARRAY_SIZE(jz_mtd_partition1),
-};
-struct spi_board_info jz_spi0_board_info[1] = {
-	[0] ={
-		.modalias       =  "jz_spi_norflash",
-		//.modalias       =  "spidev",
-		.platform_data          = &spi_nor_pdata,
-		.controller_data        = 0, /* cs for spi gpio */
-		.max_speed_hz           = 25000000,
-		.bus_num                = 0,
-		.chip_select            = 0,
-
-	},
-};
-
-static struct mtd_partition *jz_mtd_partition;
-
-static struct jz_spi_norflash *to_jz_spi_norflash(struct mtd_info *mtd_info)
+struct jz_spi_norflash *to_jz_spi_norflash(struct mtd_info *mtd_info)
 {
 	return container_of(mtd_info, struct jz_spi_norflash, mtd);
-}
-
-static inline int jz_spi_write(struct spi_device *spi, const void *buf, size_t len)
-{
-	struct spi_transfer	t = {
-			.tx_buf		= buf,
-			.len		= len,
-			.cs_change  = 1,
-		};
-	struct spi_message	m;
-
-	spi_message_init(&m);
-	spi_message_add_tail(&t, &m);
-	return spi_sync(spi, &m);
 }
 
 static int jz_spi_norflash_status(struct jz_spi_norflash *flash, int *status)
@@ -146,7 +66,6 @@ static int jz_spi_norflash_status(struct jz_spi_norflash *flash, int *status)
 
 	transfer[1].rx_buf = command;
 	transfer[1].len = sizeof(command);
-	transfer[1].cs_change = 1;
 	spi_message_add_tail(&transfer[1], &message);
 
 	ret = spi_sync(flash->spi, &message);
@@ -184,14 +103,14 @@ static int jz_spi_norflash_write_enable(struct jz_spi_norflash *flash)
 	unsigned char command[2];
 
 	command[0] = SPINOR_OP_WREN;
-	ret = jz_spi_write(flash->spi, command, 1);
+	ret = spi_write(flash->spi, command, 1);
 	if (ret) {
 		return ret;
 	}
 
 	command[0] = SPINOR_OP_WRSR;
 	command[1] = 0;
-	ret = jz_spi_write(flash->spi, command, 2);
+	ret = spi_write(flash->spi, command, 2);
 	if (ret) {
 		return ret;
 	}
@@ -201,7 +120,7 @@ static int jz_spi_norflash_write_enable(struct jz_spi_norflash *flash)
 		return ret;
 
 	command[0] = SPINOR_OP_WREN;
-	ret = jz_spi_write(flash->spi, command, 1);
+	ret = spi_write(flash->spi, command, 1);
 	if (ret) {
 		return ret;
 	}
@@ -242,7 +161,7 @@ static int jz_spi_norflash_erase_sector(struct jz_spi_norflash *flash, uint32_t 
 	command[1] = offset >> 16;
 	command[2] = offset >> 8;
 	command[3] = offset;
-	ret = jz_spi_write(flash->spi, command, 4);
+	ret = spi_write(flash->spi, command, 4);
 	if (ret)
 		return ret;
 
@@ -334,7 +253,6 @@ static int jz_spi_norflash_read(struct mtd_info *mtd, loff_t from,
 
 	transfer[1].rx_buf = buf;
 	transfer[1].len = len;
-	transfer[1].cs_change = 1;
 	spi_message_add_tail(&transfer[1], &message);
 
 	mutex_lock(&flash->lock);
@@ -418,7 +336,6 @@ static int jz_spi_norflash_write(struct mtd_info *mtd, loff_t to, size_t len,
 			return ret;
 		}
 
-		transfer[0].cs_change = 1;
 		ret = spi_sync(flash->spi, &message);
 		if(ret) {
 			printk("%s---%s---%d\n", __FILE__, __func__, __LINE__);
@@ -467,7 +384,6 @@ static int jz_spi_norflash_write(struct mtd_info *mtd, loff_t to, size_t len,
 			return ret;
 		}
 
-		transfer[0].cs_change = 1;
 		ret = spi_sync(flash->spi, &message);
 		if(ret) {
 			printk("%s---%s---%d\n", __FILE__, __func__, __LINE__);
@@ -505,7 +421,6 @@ static  int jz_spi_norflash_match_device(struct spi_device *spi,int chip_id)
 
 	transfer[1].rx_buf = recv_command;
 	transfer[1].len = sizeof(recv_command);
-	transfer[1].cs_change = 1;
 	spi_message_add_tail(&transfer[1], &message);
 
 	ret = spi_sync(spi, &message);
@@ -566,7 +481,7 @@ static int jz_spi_norflash_probe(struct spi_device *spi)
 	flash->mtd._read	= jz_spi_norflash_read;
 	flash->mtd._write 	= jz_spi_norflash_write;
 
-	ret = mtd_device_parse_register(&flash->mtd, /*jz_probe_types*/NULL, NULL, jz_mtd_partition, num_partition_info);
+	ret = mtd_device_parse_register(&flash->mtd, jz_probe_types, NULL, jz_mtd_partition, num_partition_info);
 	if (ret) {
 		kfree(flash);
 		dev_set_drvdata(&spi->dev, NULL);
@@ -620,7 +535,6 @@ static struct spi_driver jz_spi_norflash_driver = {
 
 static int __init jz_spi_norflash_driver_init(void)
 {
-	spi_register_board_info(jz_spi0_board_info, ARRAY_SIZE(jz_spi0_board_info));
 	return spi_register_driver(&jz_spi_norflash_driver);
 }
 static void __exit jz_spi_norflash_driver_exit(void)

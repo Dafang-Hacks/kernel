@@ -92,10 +92,6 @@
 	{ .name = "dmic_pc",	.port = GPIO_PORT_C, .func = GPIO_FUNC_1, .pins = 0x1<<15 | 0x3 << 11}
 
 /*******************************************************************************************************************/
-#define GMAC_PORTB							\
-	{ .name = "gmac_pb",	.port = GPIO_PORT_B, .func = GPIO_FUNC_0, .pins = 0x0001efc0}
-
-/*******************************************************************************************************************/
 
 /* JZ SoC on Chip devices list */
 extern struct platform_device jz_adc_device;

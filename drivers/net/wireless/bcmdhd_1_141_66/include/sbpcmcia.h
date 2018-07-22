@@ -3,7 +3,7 @@
  *
  * $Copyright Open Broadcom Corporation$
  *
- * $Id: sbpcmcia.h 446298 2014-01-03 11:30:17Z $
+ * $Id: sbpcmcia.h 427964 2013-10-07 07:13:33Z $
  */
 
 #ifndef	_SBPCMCIA_H
@@ -89,7 +89,6 @@
 
 /* The CIS stops where the FCRs start */
 #define	CIS_SIZE		PCMCIA_FCR
-#define CIS_SIZE_12K    1154    /* Maximum h/w + s/w sub region size for 12k OTP */
 
 /* CIS tuple length field max */
 #define CIS_TUPLE_LEN_MAX	0xff
@@ -335,9 +334,6 @@
 #define HNBU_ACPA_4080		0x89	/* ACPHY PA trimming parameters: 40/80 */
 #define HNBU_SUBBAND5GVER	0x8a	/* subband5gver */
 #define HNBU_PAPARAMBWVER	0x8b	/* paparambwver */
-
-#define HNBU_MCS5Gx1PO		0x8c
-#define HNBU_ACPPR_SB8080_PO		0x8d
 
 
 #endif /* !defined(LINUX_POSTMOGRIFY_REMOVAL) */

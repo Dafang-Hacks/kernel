@@ -3,7 +3,6 @@
 #include <linux/pwm.h>
 #include "board_base.h"
 #include <mach/jz_efuse.h>
-#include <mach/jzssi.h>
 
 #ifdef CONFIG_JZ_MAC
 #ifndef CONFIG_MDIO_GPIO
@@ -111,23 +110,4 @@ struct pwm_lookup jz_pwm_lookup[] = {
 	PWM_LOOKUP("jz-pwm", 3, "pwm-sdk", "pwm-sdk.3"),
 };
 int jz_pwm_lookup_size = ARRAY_SIZE(jz_pwm_lookup);
-#endif
-
-#ifdef CONFIG_JZ_SPI0
-struct jz_spi_info spi0_info_cfg = {
-	.chnl = 0,
-	.bus_num = 0,
-	.max_clk = 50000000,
-	.num_chipselect = 2,
-	.allow_cs_same = 1,
-};
-#endif
-
-#ifdef CONFIG_JZ_SPI1
-struct jz_spi_info spi1_info_cfg = {
-	.chnl = 1,
-	.bus_num = 1,
-	.max_clk = 54000000,
-	.num_chipselect = 2,
-};
 #endif

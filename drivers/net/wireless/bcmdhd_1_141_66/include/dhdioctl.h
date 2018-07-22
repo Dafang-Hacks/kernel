@@ -7,7 +7,7 @@
  *
  * $Copyright Open Broadcom Corporation$
  *
- * $Id: dhdioctl.h 438755 2013-11-22 23:20:40Z $
+ * $Id: dhdioctl.h 454792 2014-02-11 20:40:19Z $
  */
 
 #ifndef _dhdioctl_h_
@@ -75,12 +75,10 @@ enum {
 #endif
 #define DHD_ARPOE_VAL	0x4000
 #define DHD_REORDER_VAL	0x8000
+#define DHD_WL_VAL		0x10000
 #define DHD_NOCHECKDIED_VAL		0x20000 /* UTF WAR */
+#define DHD_WL_VAL2		0x40000
 #define DHD_PNO_VAL		0x80000
-#define DHD_ANDROID_VAL	0x10000
-#define DHD_IW_VAL	0x20000
-#define DHD_CFG_VAL	0x40000
-#define DHD_CONFIG_VAL	0x80000
 
 #ifdef SDTEST
 /* For pktgen iovar */

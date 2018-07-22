@@ -3,7 +3,7 @@
  *
  * $Copyright Open Broadcom Corporation$
  *
- * $Id: wl_linux_mon.c 467328 2014-04-03 01:23:40Z $
+ * $Id: wl_linux_mon.c 425343 2013-09-23 23:04:47Z $
  */
 
 #include <osl.h>
@@ -41,7 +41,7 @@ int dhd_monitor_uninit(void);
 #ifndef DHD_MAX_IFS
 #define DHD_MAX_IFS 16
 #endif
-#define MON_PRINT(format, ...) printk("DHD-MON: %s " format, __func__, ##__VA_ARGS__)
+#define MON_PRINT(format, ...) printf("DHD-MON: %s " format, __func__, ##__VA_ARGS__)
 #define MON_TRACE MON_PRINT
 
 typedef struct monitor_interface {

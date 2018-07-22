@@ -3,7 +3,7 @@
  *
  * $Copyright Open Broadcom Corporation$
  *
- * $Id: wl_cfgp2p.c 504573 2014-09-24 15:21:25Z $
+ * $Id: wl_cfgp2p.c 482256 2014-06-03 03:34:08Z $
  *
  */
 #include <typedefs.h>
@@ -30,11 +30,6 @@
 #include <wldev_common.h>
 #include <wl_android.h>
 
-#if defined(P2PONEINT)
-#include <dngl_stats.h>
-#include <dhd.h>
-#endif
-
 static s8 scanparambuf[WLC_IOCTL_SMLEN];
 static s8 g_mgmt_ie_buf[2048];
 static bool
@@ -46,27 +41,17 @@ wl_cfgp2p_vndr_ie(struct bcm_cfg80211 *cfg, u8 *iebuf, s32 pktflag,
 static s32 wl_cfgp2p_cancel_listen(struct bcm_cfg80211 *cfg, struct net_device *ndev,
 	struct wireless_dev *wdev, bool notify);
 
-#ifdef  P2PONEINT
-void wl_cfg80211_scan_abort(struct bcm_cfg80211 *cfg);
-chanspec_t wl_cfg80211_get_shared_freq(struct wiphy *wiphy);
-s32 dhd_cfg80211_set_p2p_info(struct bcm_cfg80211 *cfg, int val);
-int wl_cfgp2p_if_open(struct net_device *net);
-int wl_cfgp2p_if_stop(struct net_device *net);
-#endif
-
 #if defined(WL_ENABLE_P2P_IF)
 static int wl_cfgp2p_start_xmit(struct sk_buff *skb, struct net_device *ndev);
 static int wl_cfgp2p_do_ioctl(struct net_device *net, struct ifreq *ifr, int cmd);
-int wl_cfgp2p_if_open(struct net_device *net);
-int wl_cfgp2p_if_stop(struct net_device *net);
+static int wl_cfgp2p_if_open(struct net_device *net);
+static int wl_cfgp2p_if_stop(struct net_device *net);
 
 static const struct net_device_ops wl_cfgp2p_if_ops = {
 	.ndo_open       = wl_cfgp2p_if_open,
 	.ndo_stop       = wl_cfgp2p_if_stop,
 	.ndo_do_ioctl   = wl_cfgp2p_do_ioctl,
-#ifndef  P2PONEINT
 	.ndo_start_xmit = wl_cfgp2p_start_xmit,
-#endif
 };
 #endif /* WL_ENABLE_P2P_IF */
 
@@ -80,10 +65,10 @@ static int wl_cfgp2p_if_dummy(struct net_device *net)
 }
 
 static const struct net_device_ops wl_cfgp2p_if_ops = {
-	.ndo_open       = wl_cfgp2p_if_dummy,
-	.ndo_stop       = wl_cfgp2p_if_dummy,
-	.ndo_do_ioctl   = wl_cfgp2p_do_ioctl,
-	.ndo_start_xmit = wl_cfgp2p_start_xmit,
+		.ndo_open       = wl_cfgp2p_if_dummy,
+		.ndo_stop       = wl_cfgp2p_if_dummy,
+		.ndo_do_ioctl   = wl_cfgp2p_do_ioctl,
+		.ndo_start_xmit = wl_cfgp2p_start_xmit,
 };
 #endif /* WL_NEWCFG_PRIVCMD_SUPPORT */
 
@@ -172,6 +157,22 @@ bool wl_cfgp2p_is_gas_action(void *frame, u32 frame_len)
 	if (sd_act_frm->category != P2PSD_ACTION_CATEGORY)
 		return false;
 
+#ifdef WL11U
+	if (sd_act_frm->action == P2PSD_ACTION_ID_GAS_IRESP)
+		return wl_cfgp2p_find_gas_subtype(P2PSD_GAS_OUI_SUBTYPE,
+			(u8 *)sd_act_frm->query_data + GAS_RESP_OFFSET,
+			frame_len);
+
+	else if (sd_act_frm->action == P2PSD_ACTION_ID_GAS_CRESP)
+		return wl_cfgp2p_find_gas_subtype(P2PSD_GAS_OUI_SUBTYPE,
+			(u8 *)sd_act_frm->query_data + GAS_CRESP_OFFSET,
+			frame_len);
+	else if (sd_act_frm->action == P2PSD_ACTION_ID_GAS_IREQ ||
+		sd_act_frm->action == P2PSD_ACTION_ID_GAS_CREQ)
+		return true;
+	else
+		return false;
+#else
 	if (sd_act_frm->action == P2PSD_ACTION_ID_GAS_IREQ ||
 		sd_act_frm->action == P2PSD_ACTION_ID_GAS_IRESP ||
 		sd_act_frm->action == P2PSD_ACTION_ID_GAS_CREQ ||
@@ -179,6 +180,7 @@ bool wl_cfgp2p_is_gas_action(void *frame, u32 frame_len)
 		return true;
 	else
 		return false;
+#endif /* WL11U */
 }
 void wl_cfgp2p_print_actframe(bool tx, void *frame, u32 frame_len, u32 channel)
 {
@@ -414,11 +416,11 @@ wl_cfgp2p_ifadd(struct bcm_cfg80211 *cfg, struct ether_addr *mac, u8 if_type,
 		cfg->ioctl_buf, WLC_IOCTL_MAXLEN, &cfg->ioctl_buf_sync);
 
 	if (unlikely(err < 0))
-		printk("'cfg p2p_ifadd' error %d\n", err);
+		printf("'cfg p2p_ifadd' error %d\n", err);
 	else if (if_type == WL_P2P_IF_GO) {
 		err = wldev_ioctl(ndev, WLC_SET_SCB_TIMEOUT, &scb_timeout, sizeof(u32), true);
 		if (unlikely(err < 0))
-			printk("'cfg scb_timeout' error %d\n", err);
+			printf("'cfg scb_timeout' error %d\n", err);
 	}
 	return err;
 }
@@ -439,7 +441,7 @@ wl_cfgp2p_ifdisable(struct bcm_cfg80211 *cfg, struct ether_addr *mac)
 	ret = wldev_iovar_setbuf(netdev, "p2p_ifdis", mac, sizeof(*mac),
 		cfg->ioctl_buf, WLC_IOCTL_MAXLEN, &cfg->ioctl_buf_sync);
 	if (unlikely(ret < 0)) {
-		printk("'cfg p2p_ifdis' error %d\n", ret);
+		printf("'cfg p2p_ifdis' error %d\n", ret);
 	}
 	return ret;
 }
@@ -460,7 +462,7 @@ wl_cfgp2p_ifdel(struct bcm_cfg80211 *cfg, struct ether_addr *mac)
 	ret = wldev_iovar_setbuf(netdev, "p2p_ifdel", mac, sizeof(*mac),
 		cfg->ioctl_buf, WLC_IOCTL_MAXLEN, &cfg->ioctl_buf_sync);
 	if (unlikely(ret < 0)) {
-		printk("'cfg p2p_ifdel' error %d\n", ret);
+		printf("'cfg p2p_ifdel' error %d\n", ret);
 	}
 	return ret;
 }
@@ -494,11 +496,11 @@ wl_cfgp2p_ifchange(struct bcm_cfg80211 *cfg, struct ether_addr *mac, u8 if_type,
 		cfg->ioctl_buf, WLC_IOCTL_MAXLEN, &cfg->ioctl_buf_sync);
 
 	if (unlikely(err < 0)) {
-		printk("'cfg p2p_ifupd' error %d\n", err);
+		printf("'cfg p2p_ifupd' error %d\n", err);
 	} else if (if_type == WL_P2P_IF_GO) {
 		err = wldev_ioctl(netdev, WLC_SET_SCB_TIMEOUT, &scb_timeout, sizeof(u32), true);
 		if (unlikely(err < 0))
-			printk("'cfg scb_timeout' error %d\n", err);
+			printf("'cfg scb_timeout' error %d\n", err);
 	}
 	return err;
 }
@@ -574,38 +576,6 @@ wl_cfgp2p_set_p2p_mode(struct bcm_cfg80211 *cfg, u8 mode, u32 channel, u16 liste
 		return BCME_NOTFOUND;
 	}
 
-#ifdef P2PLISTEN_AP_SAMECHN
-	CFGP2P_DBG(("p2p0 listen channel %d  AP connection chan %d \n",
-		channel, cfg->channel));
-	if ((mode == WL_P2P_DISC_ST_LISTEN) && (cfg->channel == channel)) {
-		struct net_device *primary_ndev = bcmcfg_to_prmry_ndev(cfg);
-
-		if (cfg->p2p_resp_apchn_status) {
-			CFGP2P_DBG(("p2p_resp_apchn_status already ON \n"));
-			return BCME_OK;
-		}
-
-		if (wl_get_drv_status(cfg, CONNECTED, primary_ndev)) {
-			ret = wl_cfg80211_set_p2p_resp_ap_chn(primary_ndev, 1);
-			cfg->p2p_resp_apchn_status = true;
-			CFGP2P_DBG(("p2p_resp_apchn_status ON \n"));
-			return ret;
-		}
-	}
-#endif /* P2PLISTEN_AP_SAMECHN */
-
-#if defined(CUSTOM_PLATFORM_NV_TEGRA)
-#if defined(P2P_DISCOVERY_WAR)
-	if (mode == WL_P2P_DISC_ST_LISTEN || mode == WL_P2P_DISC_ST_SEARCH) {
-		if (!cfg->p2p->vif_created) {
-			if (wldev_iovar_setint(wl_to_prmry_ndev(cfg), "mpc", 0) < 0) {
-				WL_ERR(("mpc disabling failed\n"));
-			}
-		}
-	}
-#endif /* defined(P2P_DISCOVERY_WAR) */
-#endif /* defined(CUSTOM_PLATFORM_NV_TEGRA) */
-
 	/* Put the WL driver into P2P Listen Mode to respond to P2P probe reqs */
 	discovery_mode.state = mode;
 	discovery_mode.chspec = wl_ch_host_to_driver(channel);
@@ -643,7 +613,7 @@ wl_cfgp2p_init_discovery(struct bcm_cfg80211 *cfg)
 
 	CFGP2P_DBG(("enter\n"));
 
-	if (wl_to_p2p_bss_bssidx(cfg, P2PAPI_BSSCFG_DEVICE) > 0) {
+	if (wl_to_p2p_bss_bssidx(cfg, P2PAPI_BSSCFG_DEVICE) != 0) {
 		CFGP2P_ERR(("do nothing, already initialized\n"));
 		return ret;
 	}
@@ -688,7 +658,7 @@ wl_cfgp2p_deinit_discovery(struct bcm_cfg80211 *cfg)
 	s32 ret = BCME_OK;
 	CFGP2P_DBG(("enter\n"));
 
-	if (wl_to_p2p_bss_bssidx(cfg, P2PAPI_BSSCFG_DEVICE) <= 0) {
+	if (wl_to_p2p_bss_bssidx(cfg, P2PAPI_BSSCFG_DEVICE) == 0) {
 		CFGP2P_ERR(("do nothing, not initialized\n"));
 		return -1;
 	}
@@ -782,12 +752,6 @@ wl_cfgp2p_disable_discovery(struct bcm_cfg80211 *cfg)
 	s32 ret = BCME_OK;
 	CFGP2P_DBG((" enter\n"));
 	wl_clr_p2p_status(cfg, DISCOVERY_ON);
-
-	if (!cfg->p2p) { // terence 20130113: Fix for p2p NULL pointer
-		ret = BCME_ERROR;
-		CFGP2P_ERR(("wl->p2p is NULL\n"));
-		goto exit;
-	}
 
 	if (wl_to_p2p_bss_bssidx(cfg, P2PAPI_BSSCFG_DEVICE) == 0) {
 		CFGP2P_ERR((" do nothing, not initialized\n"));
@@ -1033,7 +997,7 @@ wl_cfgp2p_parse_vndr_ies(u8 *parse, u32 len,
 	remained_len = (s32)len;
 	memset(vndr_ies, 0, sizeof(*vndr_ies));
 
-	WL_INFORM(("---> len %d\n", len));
+	WL_INFO(("---> len %d\n", len));
 	ie = (bcm_tlv_t *) parse;
 	if (!bcm_valid_tlv(ie, remained_len))
 		ie = NULL;
@@ -1111,13 +1075,7 @@ wl_cfgp2p_set_management_ie(struct bcm_cfg80211 *cfg, struct net_device *ndev, s
 	memset(g_mgmt_ie_buf, 0, sizeof(g_mgmt_ie_buf));
 	curr_ie_buf = g_mgmt_ie_buf;
 	CFGP2P_DBG((" bssidx %d, pktflag : 0x%02X\n", bssidx, pktflag));
-
-#ifdef DUAL_STA
-	if ((cfg->p2p != NULL) && ((bssidx == 0) || (bssidx != cfg->cfgdev_bssidx)))
-#else
-	if (cfg->p2p != NULL)
-#endif
-	{
+	if (cfg->p2p != NULL) {
 		if (wl_cfgp2p_find_type(cfg, bssidx, &type)) {
 			CFGP2P_ERR(("cannot find type from bssidx : %d\n", bssidx));
 			return BCME_ERROR;
@@ -1156,11 +1114,6 @@ wl_cfgp2p_set_management_ie(struct bcm_cfg80211 *cfg, struct net_device *ndev, s
 				return BCME_ERROR;
 		}
 	} else if (wl_get_mode_by_netdev(cfg, ndev) == WL_MODE_AP) {
-		if (cfg->ap_info == NULL) {
-			CFGP2P_ERR(("hostapd ap_info null ptr refrence while setting  IE\n"));
-			return BCME_ERROR;
-
-		}
 		switch (pktflag) {
 			case VNDR_IE_PRBRSP_FLAG :
 				mgmt_ie_buf = cfg->ap_info->probe_res_ie;
@@ -1233,7 +1186,7 @@ wl_cfgp2p_set_management_ie(struct bcm_cfg80211 *cfg, struct net_device *ndev, s
 		if (mgmt_ie_buf != NULL) {
 			if (parsed_ie_buf_len && (parsed_ie_buf_len == *mgmt_ie_len) &&
 			     (memcmp(mgmt_ie_buf, curr_ie_buf, parsed_ie_buf_len) == 0)) {
-				CFGP2P_INFO(("Previous mgmt IE is equals to current IE\n"));
+				CFGP2P_INFO(("Previous mgmt IE is equals to current IE"));
 				goto exit;
 			}
 
@@ -1526,17 +1479,7 @@ wl_cfgp2p_find_idx(struct bcm_cfg80211 *cfg, struct net_device *ndev, s32 *bssid
 			return BCME_OK;
 		}
 	}
-
-#ifdef DUAL_STA
-	if (cfg->bss_cfgdev && (cfg->bss_cfgdev == ndev_to_cfgdev(ndev))) {
-		CFGP2P_INFO(("cfgdev is present, return the bssidx"));
-		*bssidx = cfg->cfgdev_bssidx;
-		return BCME_OK;
-	}
-#endif
-
 	return BCME_BADARG;
-
 }
 struct net_device *
 wl_cfgp2p_find_ndev(struct bcm_cfg80211 *cfg, s32 bssidx)
@@ -1583,14 +1526,6 @@ wl_cfgp2p_find_type(struct bcm_cfg80211 *cfg, s32 bssidx, s32 *type)
 		}
 	}
 
-#ifdef DUAL_STA
-	if (bssidx == cfg->cfgdev_bssidx) {
-		CFGP2P_DBG(("bssidx matching with the virtual I/F \n"));
-		*type = 1;
-		return BCME_OK;
-	}
-#endif
-
 exit:
 	return BCME_BADARG;
 }
@@ -1611,16 +1546,6 @@ wl_cfgp2p_listen_complete(struct bcm_cfg80211 *cfg, bcm_struct_cfgdev *cfgdev,
 	CFGP2P_DBG((" Enter\n"));
 
 	ndev = cfgdev_to_wlc_ndev(cfgdev, cfg);
-
-#if defined(CUSTOM_PLATFORM_NV_TEGRA)
-#if defined(P2P_DISCOVERY_WAR)
-	if (!cfg->p2p->vif_created) {
-		if (wldev_iovar_setint(ndev, "mpc", 1) < 0) {
-			WL_ERR(("mpc enabling back failed\n"));
-		}
-	}
-#endif /* defined(P2P_DISCOVERY_WAR) */
-#endif /* defined(CUSTOM_PLATFORM_NV_TEGRA) */
 
 	if (wl_get_p2p_status(cfg, LISTEN_EXPIRED) == 0) {
 		wl_set_p2p_status(cfg, LISTEN_EXPIRED);
@@ -1647,30 +1572,20 @@ wl_cfgp2p_listen_complete(struct bcm_cfg80211 *cfg, bcm_struct_cfgdev *cfgdev,
 #endif /* WL_CFG80211_SYNC_GON */
 
 #ifndef WL_CFG80211_VSDB_PRIORITIZE_SCAN_REQUEST
-		if (wl_get_drv_status_all(cfg, REMAINING_ON_CHANNEL))
+		if (wl_get_drv_status_all(cfg, REMAINING_ON_CHANNEL)) {
 #else
 		if (wl_get_drv_status_all(cfg, REMAINING_ON_CHANNEL) ||
-			wl_get_drv_status_all(cfg, FAKE_REMAINING_ON_CHANNEL))
+			wl_get_drv_status_all(cfg, FAKE_REMAINING_ON_CHANNEL)) {
 #endif /* WL_CFG80211_VSDB_PRIORITIZE_SCAN_REQUEST */
-		{
-			WL_DBG(("Listen DONE for remain on channel expired\n"));
+			WL_DBG(("Listen DONE for ramain on channel expired\n"));
 			wl_clr_drv_status(cfg, REMAINING_ON_CHANNEL, ndev);
 #ifdef WL_CFG80211_VSDB_PRIORITIZE_SCAN_REQUEST
 			wl_clr_drv_status(cfg, FAKE_REMAINING_ON_CHANNEL, ndev);
 #endif /* WL_CFG80211_VSDB_PRIORITIZE_SCAN_REQUEST */
 			if (ndev && (ndev->ieee80211_ptr != NULL)) {
 #if defined(WL_CFG80211_P2P_DEV_IF)
-				if (cfgdev && ((struct wireless_dev *)cfgdev)->wiphy) {
-					/*
-					 * To prevent kernel panic,
-					 * if cfgdev->wiphy may be invalid, adding explicit check
-					 */
-					cfg80211_remain_on_channel_expired(cfgdev, cfg->last_roc_id,
-						&cfg->remain_on_chan, GFP_KERNEL);
-				} else {
-					CFGP2P_ERR(("Invalid cfgdev. Dropping the"
-						"remain_on_channel_expired event.\n"));
-				}
+				cfg80211_remain_on_channel_expired(cfgdev, cfg->last_roc_id,
+					&cfg->remain_on_chan, GFP_KERNEL);
 #else
 				cfg80211_remain_on_channel_expired(cfgdev, cfg->last_roc_id,
 					&cfg->remain_on_chan, cfg->remain_on_chan_type, GFP_KERNEL);
@@ -1724,13 +1639,9 @@ wl_cfgp2p_cancel_listen(struct bcm_cfg80211 *cfg, struct net_device *ndev,
 		del_timer_sync(&cfg->p2p->listen_timer);
 		if (notify) {
 #if defined(WL_CFG80211_P2P_DEV_IF)
-#ifdef P2PONEINT
-			if (wdev == NULL)
-				wdev = bcmcfg_to_p2p_wdev(cfg);
-#endif
 			if (wdev)
-				cfg80211_remain_on_channel_expired(bcmcfg_to_p2p_wdev(cfg),
-					cfg->last_roc_id, &cfg->remain_on_chan, GFP_KERNEL);
+				cfg80211_remain_on_channel_expired(wdev, cfg->last_roc_id,
+					&cfg->remain_on_chan, GFP_KERNEL);
 #else
 			if (ndev && ndev->ieee80211_ptr)
 				cfg80211_remain_on_channel_expired(ndev, cfg->last_roc_id,
@@ -1969,9 +1880,7 @@ wl_cfgp2p_generate_bss_mac(struct ether_addr *primary_addr,
 	 * different from the P2P Device Address.
 	 */
 	memcpy(out_int_addr, out_dev_addr, sizeof(*out_int_addr));
-#ifndef  P2PONEINT
 	out_int_addr->octet[4] ^= 0x80;
-#endif
 
 }
 
@@ -2116,12 +2025,8 @@ wl_cfgp2p_down(struct bcm_cfg80211 *cfg)
 	s32 i = 0, index = -1;
 
 #if defined(WL_CFG80211_P2P_DEV_IF)
-	wdev = bcmcfg_to_p2p_wdev(cfg);
-#ifdef P2PONEINT
-	ndev = wdev_to_ndev(wdev);
-#else
 	ndev = bcmcfg_to_prmry_ndev(cfg);
-#endif
+	wdev = bcmcfg_to_p2p_wdev(cfg);
 #elif defined(WL_ENABLE_P2P_IF)
 	ndev = cfg->p2p_net ? cfg->p2p_net : bcmcfg_to_prmry_ndev(cfg);
 	wdev = ndev_to_wdev(ndev);
@@ -2164,7 +2069,13 @@ wl_cfgp2p_set_p2p_noa(struct bcm_cfg80211 *cfg, struct net_device *ndev, char* b
 		if (duration != -1)
 			cfg->p2p->noa.desc[0].duration = duration;
 
-		if (cfg->p2p->noa.desc[0].count != 255 && cfg->p2p->noa.desc[0].count != 0) {
+		if (cfg->p2p->noa.desc[0].count < 255 && cfg->p2p->noa.desc[0].count > 1) {
+			cfg->p2p->noa.desc[0].start = 0;
+			dongle_noa.type = WL_P2P_SCHED_TYPE_ABS;
+			dongle_noa.action = WL_P2P_SCHED_ACTION_NONE;
+			dongle_noa.option = WL_P2P_SCHED_OPTION_TSFOFS;
+		}
+		else if (cfg->p2p->noa.desc[0].count == 1) {
 			cfg->p2p->noa.desc[0].start = 200;
 			dongle_noa.type = WL_P2P_SCHED_TYPE_REQ_ABS;
 			dongle_noa.action = WL_P2P_SCHED_ACTION_GOOFF;
@@ -2172,8 +2083,6 @@ wl_cfgp2p_set_p2p_noa(struct bcm_cfg80211 *cfg, struct net_device *ndev, char* b
 		}
 		else if (cfg->p2p->noa.desc[0].count == 0) {
 			cfg->p2p->noa.desc[0].start = 0;
-			dongle_noa.type = WL_P2P_SCHED_TYPE_ABS;
-			dongle_noa.option = WL_P2P_SCHED_OPTION_NORMAL;
 			dongle_noa.action = WL_P2P_SCHED_ACTION_RESET;
 		}
 		else {
@@ -2434,153 +2343,7 @@ struct ethtool_ops cfgp2p_ethtool_ops = {
 };
 #endif /* LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 24) */
 
-#if defined(WL_ENABLE_P2P_IF) || defined(WL_NEWCFG_PRIVCMD_SUPPORT) || \
-	defined(P2PONEINT)
-#ifdef  P2PONEINT
-s32
-wl_cfgp2p_register_ndev(struct bcm_cfg80211 *cfg)
-{
-
-	struct net_device *_ndev;
-	struct ether_addr primary_mac;
-	struct net_device *new_ndev;
-	chanspec_t chspec;
-	uint8 name[IFNAMSIZ];
-	s32 mode = 0;
-	s32 val = 0;
-
-
-	s32 wlif_type = -1;
-	s32 err, timeout = -1;
-
-	memset(name, 0, IFNAMSIZ);
-	strncpy(name, "p2p0", 4);
-	name[IFNAMSIZ - 1] = '\0';
-
-	if (cfg->p2p_net) {
-		CFGP2P_ERR(("p2p_net defined already.\n"));
-		return -EINVAL;
-	}
-
-	if (!cfg->p2p)
-		return -EINVAL;
-
-	if (cfg->p2p && !cfg->p2p->on && strstr(name, WL_P2P_INTERFACE_PREFIX)) {
-		p2p_on(cfg) = true;
-		wl_cfgp2p_set_firm_p2p(cfg);
-		wl_cfgp2p_init_discovery(cfg);
-		get_primary_mac(cfg, &primary_mac);
-		wl_cfgp2p_generate_bss_mac(&primary_mac,
-			&cfg->p2p->dev_addr, &cfg->p2p->int_addr);
-	}
-
-	_ndev = bcmcfg_to_prmry_ndev(cfg);
-	memset(cfg->p2p->vir_ifname, 0, IFNAMSIZ);
-	strncpy(cfg->p2p->vir_ifname, name, IFNAMSIZ - 1);
-
-	wl_cfg80211_scan_abort(cfg);
-
-
-	/* In concurrency case, STA may be already associated in a particular channel.
-	 * so retrieve the current channel of primary interface and then start the virtual
-	 * interface on that.
-	 */
-	chspec = wl_cfg80211_get_shared_freq(cfg->wdev->wiphy);
-
-	/* For P2P mode, use P2P-specific driver features to create the
-	 * bss: "cfg p2p_ifadd"
-	 */
-	wl_set_p2p_status(cfg, IF_ADDING);
-	memset(&cfg->if_event_info, 0, sizeof(cfg->if_event_info));
-	wlif_type = WL_P2P_IF_CLIENT;
-
-
-	err = wl_cfgp2p_ifadd(cfg, &cfg->p2p->int_addr, htod32(wlif_type), chspec);
-	if (unlikely(err)) {
-		wl_clr_p2p_status(cfg, IF_ADDING);
-		WL_ERR((" virtual iface add failed (%d) \n", err));
-		return -ENOMEM;
-	}
-
-	timeout = wait_event_interruptible_timeout(cfg->netif_change_event,
-		(wl_get_p2p_status(cfg, IF_ADDING) == false),
-		msecs_to_jiffies(MAX_WAIT_TIME));
-
-
-	if (timeout > 0 && !wl_get_p2p_status(cfg, IF_ADDING) && cfg->if_event_info.valid) {
-		struct wireless_dev *vwdev;
-		int pm_mode = PM_ENABLE;
-		wl_if_event_info *event = &cfg->if_event_info;
-
-		/* IF_ADD event has come back, we can proceed to to register
-		 * the new interface now, use the interface name provided by caller (thus
-		 * ignore the one from wlc)
-		 */
-		strncpy(cfg->if_event_info.name, name, IFNAMSIZ - 1);
-		new_ndev = wl_cfg80211_allocate_if(cfg, event->ifidx, cfg->p2p->vir_ifname,
-			event->mac, event->bssidx);
-		if (new_ndev == NULL)
-			goto fail;
-
-		wl_to_p2p_bss_ndev(cfg, P2PAPI_BSSCFG_CONNECTION) = new_ndev;
-		wl_to_p2p_bss_bssidx(cfg, P2PAPI_BSSCFG_CONNECTION) = event->bssidx;
-
-		vwdev = kzalloc(sizeof(*vwdev), GFP_KERNEL);
-		if (unlikely(!vwdev)) {
-			WL_ERR(("Could not allocate wireless device\n"));
-			goto fail;
-		}
-		vwdev->wiphy = cfg->wdev->wiphy;
-		WL_TRACE(("virtual interface(%s) is created\n", cfg->p2p->vir_ifname));
-		vwdev->iftype = NL80211_IFTYPE_P2P_DEVICE;
-		vwdev->netdev = new_ndev;
-		new_ndev->ieee80211_ptr = vwdev;
-		SET_NETDEV_DEV(new_ndev, wiphy_dev(vwdev->wiphy));
-		wl_set_drv_status(cfg, READY, new_ndev);
-		cfg->p2p->vif_created = true;
-		wl_set_mode_by_netdev(cfg, new_ndev, mode);
-
-		if (wl_cfg80211_register_if(cfg, event->ifidx, new_ndev) != BCME_OK) {
-			wl_cfg80211_remove_if(cfg, event->ifidx, new_ndev);
-			goto fail;
-		}
-
-		wl_alloc_netinfo(cfg, new_ndev, vwdev, mode, pm_mode);
-		val = 1;
-		/* Disable firmware roaming for P2P interface  */
-		wldev_iovar_setint(new_ndev, "roam_off", val);
-
-		if (mode != WL_MODE_AP)
-			wldev_iovar_setint(new_ndev, "buf_key_b4_m4", 1);
-
-		WL_ERR((" virtual interface(%s) is "
-					"created net attach done\n", cfg->p2p->vir_ifname));
-
-		/* reinitialize completion to clear previous count */
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(3, 13, 0))
-		INIT_COMPLETION(cfg->iface_disable);
-#else
-		init_completion(&cfg->iface_disable);
-#endif
-		cfg->p2p_net = new_ndev;
-		cfg->p2p_wdev = vwdev;
-
-		return 0;
-	} else {
-		wl_clr_p2p_status(cfg, IF_ADDING);
-		WL_ERR((" virtual interface(%s) is not created \n", cfg->p2p->vir_ifname));
-		memset(cfg->p2p->vir_ifname, '\0', IFNAMSIZ);
-		cfg->p2p->vif_created = false;
-	}
-
-
-fail:
-	if (wlif_type == WL_P2P_IF_GO)
-		wldev_iovar_setint(_ndev, "mpc", 1);
-	return -ENODEV;
-
-}
-#else
+#if defined(WL_ENABLE_P2P_IF) || defined(WL_NEWCFG_PRIVCMD_SUPPORT)
 s32
 wl_cfgp2p_register_ndev(struct bcm_cfg80211 *cfg)
 {
@@ -2672,7 +2435,6 @@ wl_cfgp2p_register_ndev(struct bcm_cfg80211 *cfg)
 
 	return ret;
 }
-#endif /* P2PONEINT */
 
 s32
 wl_cfgp2p_unregister_ndev(struct bcm_cfg80211 *cfg)
@@ -2689,7 +2451,6 @@ wl_cfgp2p_unregister_ndev(struct bcm_cfg80211 *cfg)
 	return 0;
 }
 
-#ifndef  P2PONEINT
 static int wl_cfgp2p_start_xmit(struct sk_buff *skb, struct net_device *ndev)
 {
 
@@ -2724,16 +2485,10 @@ static int wl_cfgp2p_do_ioctl(struct net_device *net, struct ifreq *ifr, int cmd
 
 	return ret;
 }
-#endif /*  P2PONEINT */
-#endif /* WL_ENABLE_P2P_IF || WL_NEWCFG_PRIVCMD_SUPPORT || defined(P2PONEINT) */
+#endif /* WL_ENABLE_P2P_IF || WL_NEWCFG_PRIVCMD_SUPPORT  */
 
-#if defined(WL_ENABLE_P2P_IF) || defined(P2PONEINT)
-int
-#ifdef  P2PONEINT
-wl_cfgp2p_if_open(struct net_device *net)
-#else
-wl_cfgp2p_if_open(struct net_device *net)
-#endif
+#if defined(WL_ENABLE_P2P_IF)
+static int wl_cfgp2p_if_open(struct net_device *net)
 {
 	struct wireless_dev *wdev = net->ieee80211_ptr;
 
@@ -2755,26 +2510,14 @@ wl_cfgp2p_if_open(struct net_device *net)
 	return 0;
 }
 
-int
-#ifdef  P2PONEINT
-wl_cfgp2p_if_stop(struct net_device *net)
-#else
-wl_cfgp2p_if_stop(struct net_device *net)
-#endif
+static int wl_cfgp2p_if_stop(struct net_device *net)
 {
 	struct wireless_dev *wdev = net->ieee80211_ptr;
-#ifdef P2PONEINT
-	bcm_struct_cfgdev *cfgdev;
-#endif
+
 	if (!wdev)
 		return -EINVAL;
 
-#ifdef P2PONEINT
-	cfgdev = ndev_to_cfgdev(net);
-	wl_cfg80211_scan_stop(cfgdev);
-#else
 	wl_cfg80211_scan_stop(net);
-#endif
 
 #if !defined(WL_IFACE_COMB_NUM_CHANNELS)
 	wdev->wiphy->interface_modes = (wdev->wiphy->interface_modes)
@@ -2783,9 +2526,7 @@ wl_cfgp2p_if_stop(struct net_device *net)
 #endif /* !WL_IFACE_COMB_NUM_CHANNELS */
 	return 0;
 }
-#endif /* defined(WL_ENABLE_P2P_IF) || defined(P2PONEINT) */
 
-#if defined(WL_ENABLE_P2P_IF)
 bool wl_cfgp2p_is_ifops(const struct net_device_ops *if_ops)
 {
 	return (if_ops == &wl_cfgp2p_if_ops);
@@ -2799,15 +2540,14 @@ wl_cfgp2p_add_p2p_disc_if(struct bcm_cfg80211 *cfg)
 	struct wireless_dev *wdev = NULL;
 	struct ether_addr primary_mac;
 
-	if (!cfg || !cfg->p2p_supported)
+	if (!cfg)
 		return ERR_PTR(-EINVAL);
 
 	WL_TRACE(("Enter\n"));
 
 	if (cfg->p2p_wdev) {
 		CFGP2P_ERR(("p2p_wdev defined already.\n"));
-//#if (defined(CUSTOMER_HW10) && defined(CONFIG_ARCH_ODIN))
-#if 1 // after android stop; start, wpa_supplicant start fail because of "Failed to create a P2P Device interface p2p-dev-wlan0"
+#if (defined(CUSTOMER_HW10) && defined(CONFIG_ARCH_ODIN))
 		wl_cfgp2p_del_p2p_disc_if(cfg->p2p_wdev, cfg);
 		CFGP2P_ERR(("p2p_wdev deleted.\n"));
 #else
@@ -2838,7 +2578,7 @@ wl_cfgp2p_add_p2p_disc_if(struct bcm_cfg80211 *cfg)
 	/* store p2p wdev ptr for further reference. */
 	cfg->p2p_wdev = wdev;
 
-	printf("P2P interface registered\n");
+	CFGP2P_ERR(("P2P interface registered\n"));
 
 	return wdev;
 }
@@ -2868,7 +2608,7 @@ wl_cfgp2p_start_p2p_device(struct wiphy *wiphy, struct wireless_dev *wdev)
 
 	p2p_on(cfg) = true;
 
-	printf("P2P interface started\n");
+	CFGP2P_DBG(("P2P interface started\n"));
 
 exit:
 	return ret;
@@ -2900,7 +2640,7 @@ wl_cfgp2p_stop_p2p_device(struct wiphy *wiphy, struct wireless_dev *wdev)
 
 	p2p_on(cfg) = false;
 
-	printf("P2P interface stopped\n");
+	CFGP2P_DBG(("P2P interface stopped\n"));
 
 	return;
 }
@@ -2912,10 +2652,6 @@ wl_cfgp2p_del_p2p_disc_if(struct wireless_dev *wdev, struct bcm_cfg80211 *cfg)
 
 	if (!wdev)
 		return -EINVAL;
-
-#ifdef P2PONEINT
-	return -EINVAL;
-#endif
 
 	WL_TRACE(("Enter\n"));
 
@@ -2934,7 +2670,7 @@ wl_cfgp2p_del_p2p_disc_if(struct wireless_dev *wdev, struct bcm_cfg80211 *cfg)
 	if (cfg)
 		cfg->p2p_wdev = NULL;
 
-	printf("P2P interface unregistered\n");
+	CFGP2P_ERR(("P2P interface unregistered\n"));
 
 	return 0;
 }

@@ -3,7 +3,7 @@
  *
  * $Copyright Open Broadcom Corporation$
  *
- * $Id: sbsocram.h 481602 2014-05-29 22:43:34Z $
+ * $Id: sbsocram.h 481592 2014-05-29 22:10:51Z $
  */
 
 #ifndef	_SBSOCRAM_H

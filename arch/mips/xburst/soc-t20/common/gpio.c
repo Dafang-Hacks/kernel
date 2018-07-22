@@ -147,11 +147,11 @@ static void gpio_set_func(struct jzgpio_chip *chip,
 		writel(comp ^ pins, chip->reg + PXPAT0C);
 	}
 
-	comp = pins & (readl(chip->reg + PXPEN));
+	comp = pins & (~readl(chip->reg + PXPEN));
 	if((func & 0x10) && (comp != pins)){
 		writel(comp ^ pins, chip->reg + PXPENS);
 	}
-	comp = pins & (~readl(chip->reg + PXPEN));
+	comp = pins & readl(chip->reg + PXPEN);
 	if(!(func & 0x10) && (comp != pins)){
 		writel(comp ^ pins, chip->reg + PXPENC);
 	}
@@ -294,7 +294,6 @@ int jzgpio_ctrl_pull(enum gpio_port port, int enable_pull,unsigned long pins)
 
 	return 0;
 }
-EXPORT_SYMBOL(jzgpio_ctrl_pull);
 
 /* Functions followed for GPIOLIB */
 static int jz_gpio_set_pull(struct gpio_chip *chip,

@@ -718,8 +718,8 @@ static int jz_spi_pio_txrx(struct spi_device *spi, struct spi_transfer *t)
 
 	/* wait the interrupt finish the transfer( one spi_transfer be sent ) */
 	wait_for_completion_interruptible(&hw->done);
-	if (t->cs_change)
-		finish_transmit(hw);
+
+	finish_transmit(hw);
 	clear_errors(hw);
 
 	if (hw->rlen != t->len) {

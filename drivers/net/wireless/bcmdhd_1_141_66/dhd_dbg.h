@@ -3,7 +3,7 @@
  *
  * $ Copyright Open Broadcom Corporation $
  *
- * $Id: dhd_dbg.h 491225 2014-07-15 11:58:29Z $
+ * $Id: dhd_dbg.h 424863 2013-09-19 20:06:14Z $
  */
 
 #ifndef _dhd_dbg_
@@ -32,7 +32,6 @@
 #define DHD_PNO(args)		do {if (dhd_msg_level & DHD_PNO_VAL) printf args;} while (0)
 
 #define DHD_TRACE_HW4	DHD_TRACE
-#define DHD_INFO_HW4	DHD_INFO
 
 #define DHD_ERROR_ON()		(dhd_msg_level & DHD_ERROR_VAL)
 #define DHD_TRACE_ON()		(dhd_msg_level & DHD_TRACE_VAL)
@@ -72,7 +71,6 @@
 #define DHD_PNO(args)
 
 #define DHD_TRACE_HW4	DHD_TRACE
-#define DHD_INFO_HW4	DHD_INFO
 
 #define DHD_ERROR_ON()		0
 #define DHD_TRACE_ON()		0

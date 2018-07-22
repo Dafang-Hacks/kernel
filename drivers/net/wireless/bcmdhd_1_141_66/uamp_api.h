@@ -5,11 +5,9 @@
  *
  * $Copyright Open Broadcom Corporation$
  *
- * $Id: uamp_api.h 467328 2014-04-03 01:23:40Z $
+ * $Id: uamp_api.h 294267 2011-11-04 23:41:52Z $
  *
  */
-
-
 #ifndef UAMP_API_H
 #define UAMP_API_H
 

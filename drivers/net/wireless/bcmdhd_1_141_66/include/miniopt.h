@@ -2,7 +2,7 @@
  * Command line options parser.
  *
  * $Copyright Open Broadcom Corporation$
- * $Id: miniopt.h 484281 2014-06-12 22:42:26Z $
+ * $Id: miniopt.h 241182 2011-02-17 21:50:03Z $
  */
 
 
@@ -14,8 +14,6 @@ extern "C" {
 #endif
 
 /* ---- Include Files ---------------------------------------------------- */
-
-
 /* ---- Constants and Types ---------------------------------------------- */
 
 #define MINIOPT_MAXKEY	128	/* Max options */

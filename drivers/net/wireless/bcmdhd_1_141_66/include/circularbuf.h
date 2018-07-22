@@ -3,7 +3,7 @@
  *
  * $Copyright Open Broadcom Corporation$
  *
- * $Id: circularbuf.h 452258 2014-01-29 19:17:57Z $
+ * $Id: circularbuf.h 452261 2014-01-29 19:30:23Z $
  */
 
 #ifndef __CIRCULARBUF_H_INCLUDED__

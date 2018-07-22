@@ -4,7 +4,7 @@
  *
  * $Copyright Open Broadcom Corporation$
  *
- * $Id: dhd_linux_wq.c 449578 2014-01-17 13:53:20Z $
+ * $Id: dhd_linux_wq.c 411851 2013-07-10 20:48:00Z $
  */
 
 #include <linux/init.h>
@@ -48,6 +48,7 @@ struct dhd_deferred_wq {
 	spinlock_t			work_lock;
 	void				*dhd_info; /* review: does it require */
 };
+struct dhd_deferred_wq	*deferred_wq = NULL;
 
 static inline struct kfifo*
 dhd_kfifo_init(u8 *buf, int size, spinlock_t *lock)
@@ -71,10 +72,6 @@ static inline void
 dhd_kfifo_free(struct kfifo *fifo)
 {
 	kfifo_free(fifo);
-#if (LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 31))
-	/* FC11 releases the fifo memory */
-	kfree(fifo);
-#endif
 }
 
 /* deferred work functions */
@@ -139,6 +136,7 @@ dhd_deferred_work_init(void *dhd_info)
 	}
 
 	work->dhd_info = dhd_info;
+	deferred_wq = work;
 	DHD_ERROR(("%s: work queue initialized \n", __FUNCTION__));
 	return work;
 
@@ -175,6 +173,9 @@ dhd_deferred_work_deinit(void *work)
 		dhd_kfifo_free(deferred_work->work_fifo);
 
 	kfree(deferred_work);
+
+	/* deinit internal reference pointer */
+	deferred_wq = NULL;
 }
 
 /*
@@ -182,10 +183,8 @@ dhd_deferred_work_deinit(void *work)
  *	Schedules the event
  */
 int
-dhd_deferred_schedule_work(void *workq, void *event_data, u8 event,
-	event_handler_t event_handler, u8 priority)
+dhd_deferred_schedule_work(void *event_data, u8 event, event_handler_t event_handler, u8 priority)
 {
-	struct dhd_deferred_wq *deferred_wq = (struct dhd_deferred_wq *) workq;
 	struct	dhd_deferred_event_t	deferred_event;
 	int	status;
 
@@ -229,7 +228,7 @@ dhd_deferred_schedule_work(void *workq, void *event_data, u8 event,
 }
 
 static int
-dhd_get_scheduled_work(struct dhd_deferred_wq *deferred_wq, struct dhd_deferred_event_t *event)
+dhd_get_scheduled_work(struct dhd_deferred_event_t *event)
 {
 	int	status = 0;
 
@@ -276,7 +275,7 @@ dhd_deferred_work_handler(struct work_struct *work)
 	}
 
 	do {
-		status = dhd_get_scheduled_work(deferred_work, &work_event);
+		status = dhd_get_scheduled_work(&work_event);
 		DHD_TRACE(("%s: event to handle %d \n", __FUNCTION__, status));
 		if (!status) {
 			DHD_TRACE(("%s: No event to handle %d \n", __FUNCTION__, status));

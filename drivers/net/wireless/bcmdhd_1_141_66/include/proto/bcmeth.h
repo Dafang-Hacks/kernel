@@ -3,7 +3,7 @@
  *
  * $Copyright Open Broadcom Corporation$
  *
- * $Id: bcmeth.h 445746 2013-12-30 12:57:26Z $
+ * $Id: bcmeth.h 382882 2013-02-04 23:24:31Z $
  */
 
 /*
@@ -71,7 +71,7 @@
  * within BCMILCP_BCM_SUBTYPE_EVENT type messages
  */
 /* #define BCMILCP_BCM_SUBTYPE_EAPOL		3 */
-#define BCMILCP_BCM_SUBTYPE_DPT                 4
+#define BCMILCP_BCM_SUBTYPE_DPT			4
 
 #define BCMILCP_BCM_SUBTYPEHDR_MINLENGTH	8
 #define BCMILCP_BCM_SUBTYPEHDR_VERSION		0

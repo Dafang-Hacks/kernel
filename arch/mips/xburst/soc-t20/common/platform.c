@@ -81,7 +81,7 @@ struct jz_gpio_func_def platform_devio_array[] = {
 	OTG_DRVVUS,
 #endif
 
-#ifdef CONFIG_JZ_SPI0_PC
+#ifdef CONFIG_SPI0_PC
 	SSI0_PORTC,
 #endif
 
@@ -95,10 +95,6 @@ struct jz_gpio_func_def platform_devio_array[] = {
 
 #ifdef CONFIG_JZ_DMIC_V12
 	DMIC_PORTC,
-#endif
-
-#ifdef CONFIG_JZ_MAC
-	GMAC_PORTB,
 #endif
 };
 
@@ -614,28 +610,6 @@ struct platform_device jz_alsa_device = {
 };
 #endif /* end of ALSA platform devices */
 
-#ifdef CONFIG_SPI0_PIO_ONLY
-#define DEF_PIO_SSI(NO)		 					\
-	static struct resource jz_ssi##NO##_resources[] = {		\
-		[0] = {							\
-			.flags	       = IORESOURCE_MEM,		\
-			.start	       = SSI##NO##_IOBASE,		\
-			.end	       = SSI##NO##_IOBASE + 0x1000 - 1,	\
-		},							\
-		[1] = {							\
-			.flags	       = IORESOURCE_IRQ,		\
-			.start	       = IRQ_SSI##NO,			\
-			.end	       = IRQ_SSI##NO,			\
-		},							\
-	};								\
-	struct platform_device jz_ssi##NO##_device = {			\
-		.name = "jz-ssi",					\
-		.id = NO,						\
-		.resource       = jz_ssi##NO##_resources,		\
-		.num_resources  = ARRAY_SIZE(jz_ssi##NO##_resources),	\
-	};
-DEF_PIO_SSI(0);
-#else
 static u64 jz_ssi_dmamask =  ~(u32)0;
 #define DEF_SSI(NO)							\
 	static struct resource jz_ssi##NO##_resources[] = {		\
@@ -664,6 +638,29 @@ static u64 jz_ssi_dmamask =  ~(u32)0;
 		.resource       = jz_ssi##NO##_resources,		\
 		.num_resources  = ARRAY_SIZE(jz_ssi##NO##_resources),	\
 	};
+
+#define DEF_PIO_SSI(NO)		 					\
+	static struct resource jz_ssi##NO##_resources[] = {		\
+		[0] = {							\
+			.flags	       = IORESOURCE_MEM,		\
+			.start	       = SSI##NO##_IOBASE,		\
+			.end	       = SSI##NO##_IOBASE + 0x1000 - 1,	\
+		},							\
+		[1] = {							\
+			.flags	       = IORESOURCE_IRQ,		\
+			.start	       = IRQ_SSI##NO,			\
+			.end	       = IRQ_SSI##NO,			\
+		},							\
+	};								\
+	struct platform_device jz_ssi##NO##_device = {			\
+		.name = "jz-ssi",					\
+		.id = NO,						\
+		.resource       = jz_ssi##NO##_resources,		\
+		.num_resources  = ARRAY_SIZE(jz_ssi##NO##_resources),	\
+	};
+#ifdef CONFIG_SPI0_PIO_ONLY
+DEF_PIO_SSI(0);
+#else
 DEF_SSI(0);
 #endif
 

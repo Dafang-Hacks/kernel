@@ -3,7 +3,7 @@
  *
  * $Copyright Open Broadcom Corporation$
  *
- * $Id: dhd_bta.c 434434 2013-11-06 07:16:02Z $
+ * $Id: dhd_bta.c 434656 2013-11-07 01:11:33Z $
  */
 #ifndef WLBTAMP
 #error "WLBTAMP is not defined"

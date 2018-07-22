@@ -2,7 +2,7 @@
  * bcmevent read-only data shared by kernel or app layers
  *
  * $Copyright Open Broadcom Corporation$
- * $Id: bcmevent.c 492377 2014-07-21 19:54:06Z $
+ * $Id: bcmevent.c 482932 2014-06-05 13:34:21Z $
  */
 
 #include <typedefs.h>
@@ -11,17 +11,10 @@
 #include <proto/bcmeth.h>
 #include <proto/bcmevent.h>
 
-
-/* Table of event name strings for UIs and debugging dumps */
-typedef struct {
-	uint event;
-	const char *name;
-} bcmevent_name_str_t;
-
 /* Use the actual name for event tracing */
 #define BCMEVENT_NAME(_event) {(_event), #_event}
 
-static const bcmevent_name_str_t bcmevent_names[] = {
+const bcmevent_name_t bcmevent_names[] = {
 	BCMEVENT_NAME(WLC_E_SET_SSID),
 	BCMEVENT_NAME(WLC_E_JOIN),
 	BCMEVENT_NAME(WLC_E_START),
@@ -90,6 +83,19 @@ static const bcmevent_name_str_t bcmevent_names[] = {
 	BCMEVENT_NAME(WLC_E_ACTION_FRAME_RX),
 	BCMEVENT_NAME(WLC_E_ACTION_FRAME_COMPLETE),
 #endif
+#if 0 && (NDISVER >= 0x0620)
+	BCMEVENT_NAME(WLC_E_PRE_ASSOC_IND),
+	BCMEVENT_NAME(WLC_E_PRE_REASSOC_IND),
+	BCMEVENT_NAME(WLC_E_CHANNEL_ADOPTED),
+	BCMEVENT_NAME(WLC_E_AP_STARTED),
+	BCMEVENT_NAME(WLC_E_DFS_AP_STOP),
+	BCMEVENT_NAME(WLC_E_DFS_AP_RESUME),
+	BCMEVENT_NAME(WLC_E_ASSOC_IND_NDIS),
+	BCMEVENT_NAME(WLC_E_REASSOC_IND_NDIS),
+	BCMEVENT_NAME(WLC_E_ACTION_FRAME_RX_NDIS),
+	BCMEVENT_NAME(WLC_E_AUTH_REQ),
+	BCMEVENT_NAME(WLC_E_IBSS_COALESCE),
+#endif 
 #ifdef BCMWAPI_WAI
 	BCMEVENT_NAME(WLC_E_WAI_STA_EVENT),
 	BCMEVENT_NAME(WLC_E_WAI_MSG),
@@ -119,6 +125,7 @@ static const bcmevent_name_str_t bcmevent_names[] = {
 #endif
 	BCMEVENT_NAME(WLC_E_ASSOC_REQ_IE),
 	BCMEVENT_NAME(WLC_E_ASSOC_RESP_IE),
+	BCMEVENT_NAME(WLC_E_ACTION_FRAME_RX_NDIS),
 	BCMEVENT_NAME(WLC_E_BEACON_FRAME_RX),
 #ifdef WLTDLS
 	BCMEVENT_NAME(WLC_E_TDLS_PEER_EVENT),
@@ -147,39 +154,6 @@ static const bcmevent_name_str_t bcmevent_names[] = {
 #ifdef WLAIBSS
 	BCMEVENT_NAME(WLC_E_AIBSS_TXFAIL),
 #endif /* WLAIBSS */
-#ifdef WLBSSLOAD_REPORT
-	BCMEVENT_NAME(WLC_E_BSS_LOAD),
-#endif
-#if defined(BT_WIFI_HANDOVER) || defined(WL_TBOW)
-	BCMEVENT_NAME(WLC_E_BT_WIFI_HANDOVER_REQ),
-#endif
-#ifdef WLFBT
-	BCMEVENT_NAME(WLC_E_FBT_AUTH_REQ_IND),
-#endif /* WLFBT */
-	BCMEVENT_NAME(WLC_E_RMC_EVENT),
 };
 
-
-const char *bcmevent_get_name(uint event_type)
-{
-	/* note:  first coded this as a static const but some
-	 * ROMs already have something called event_name so
-	 * changed it so we don't have a variable for the
-	 * 'unknown string
-	 */
-	const char *event_name = NULL;
-
-	uint idx;
-	for (idx = 0; idx < (uint)ARRAYSIZE(bcmevent_names); idx++) {
-
-		if (bcmevent_names[idx].event == event_type) {
-			event_name = bcmevent_names[idx].name;
-			break;
-		}
-	}
-
-	/* if we find an event name in the array, return it.
-	 * otherwise return unknown string.
-	 */
-	return ((event_name) ? event_name : "Unknown Event");
-}
+const int bcmevent_names_size = ARRAYSIZE(bcmevent_names);
