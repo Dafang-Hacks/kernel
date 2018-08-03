@@ -49,7 +49,7 @@ struct mtd_partition part[] = {
 
 static int create_missing_flash_parts(struct device *dev, void *data)
 {
-
+int ret;
 	struct mtd_info *mtd = NULL;
 
 	printk(KERN_INFO "mtd-hack: device %s\n", dev->init_name);
