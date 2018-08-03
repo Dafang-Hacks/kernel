@@ -3,7 +3,7 @@ CROSS_COMPILE ?= mips-linux-gnu-
 ISVP_ENV_KERNEL_DIR = ../../../
 
 KDIR := ${ISVP_ENV_KERNEL_DIR}
-MODULE_NAME := mtdhack
+MODULE_NAME := mtd_hack
 
 all: modules
 
