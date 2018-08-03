@@ -75,8 +75,13 @@ static int create_missing_flash_parts(struct device *dev, void *data)
                         printk(KERN_INFO "0x%x ", buf[i]);
         }
         */
+    ret = mtd_del_partition(mtd, 0);
+    printk(KERN_INFO "mtd_del_partition returned : %d",ret);
+    ret = mtd_del_partition(mtd, 1);
+    printk(KERN_INFO "mtd_del_partition returned : %d",ret);
 
 	mtd_add_partition(mtd, "ubootw",0,256*1024);
+	printk(KERN_INFO "mtd_add_partition returned : %d",ret);
 
 	return 0;
 }
