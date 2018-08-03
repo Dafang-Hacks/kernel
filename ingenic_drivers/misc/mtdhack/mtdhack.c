@@ -76,7 +76,7 @@ static int create_missing_flash_parts(struct device *dev, void *data)
         }
         */
 
-	add_mtd_partitions(mtd, part, 1);
+	mtd_add_partition(mtd, "ubootw",0,256*1024);
 
 	return 0;
 }
@@ -86,8 +86,9 @@ static int __init mtd_init(void)
 	struct device_driver *devdrv;
 	int err = 0;
 
+    printk(KERN_INFO "mtd hack loaded");
 	//	struct device_driver *driver_find(const char *name, struct bus_type *bus);
-	devdrv = driver_find("jz_sfc", &platform_bus_type);
+	devdrv = driver_find("jz-sfc", &platform_bus_type);
 
 	printk(KERN_INFO "mtd-hack: found driver %s modname %s\n", devdrv->name, devdrv->mod_name);
 	//	int driver_for_each_device(struct device_driver *drv, struct device *start,
