@@ -80,8 +80,11 @@ int ret;
     ret = mtd_del_partition(mtd, 1);
     printk(KERN_INFO "mtd_del_partition returned : %d",ret);
 
-	mtd_add_partition(mtd, "ubootw",0,256*1024);
+	mtd_add_partition(mtd, "uboot1",0,128*1024);
 	printk(KERN_INFO "mtd_add_partition returned : %d",ret);
+
+    mtd_add_partition(mtd, "uboot2",128*1024,128*1024);
+    printk(KERN_INFO "mtd_add_partition returned : %d",ret);
 
 	return 0;
 }
