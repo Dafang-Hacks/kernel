@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-TOOLCHAIN=$(pwd)/../mips-gcc472-glibc216-64bit/bin
-CROSS_COMPILE=$TOOLCHAIN/mips-linux-gnu-
+CROSS_COMPILE="/home/eko/Dokumente/projects/Xiaomi-Dafang-Software/mips-gcc472-glibc216-64bit/bin/mips-linux-gnu-"
 export CROSS_COMPILE=${CROSS_COMPILE}
 export CC=${CROSS_COMPILE}gcc
 export LD=${CROSS_COMPILE}ld
