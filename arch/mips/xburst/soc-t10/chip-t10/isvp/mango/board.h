@@ -47,7 +47,7 @@
 #define GPIO_USB_ID_LEVEL		LOW_ENABLE
 #define GPIO_USB_DETE			-1
 #define GPIO_USB_DETE_LEVEL		LOW_ENABLE
-#define GPIO_USB_DRVVBUS		-1
+#define GPIO_USB_DRVVBUS		GPIO_PC(13)
 #define GPIO_USB_DRVVBUS_LEVEL		HIGH_ENABLE
 /* ****************************GPIO USB END********************************** */
 
